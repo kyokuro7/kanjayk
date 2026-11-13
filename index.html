@@ -1,0 +1,2190 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML2MP4 Studio — Konverter Animasi HTML ke Video MP4</title>
+  <!-- Tailwind CSS CDN untuk tata letak workstation studio responsif -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Library mp4-muxer untuk pengemasan kontainer MP4 (H.264 + AAC) langsung di browser -->
+  <script src="https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.min.js"></script>
+  <!-- Google Fonts: Plus Jakarta Sans, Inter, dan JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg-obsidian: #060911;
+      --bg-surface: #0D1322;
+      --bg-card: #131C31;
+      --accent-teal: #06D6A0;
+      --accent-sky: #38BDF8;
+      --accent-amber: #FFD166;
+      --accent-coral: #FF6B6B;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-obsidian);
+      background-image:
+        radial-gradient(circle at 15% 15%, rgba(6, 214, 160, 0.06) 0%, transparent 40%),
+        radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.06) 0%, transparent 45%);
+      color: #F8FAFC;
+      margin: 0;
+      overflow-x: hidden;
+    }
+
+    .font-display {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Panel Glassmorphism Obsidian */
+    .studio-glass {
+      background: rgba(15, 23, 42, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .studio-card {
+      background: rgba(19, 28, 49, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    /* Viewport Stage 16:9 & 9:16 */
+    .stage-frame-16-9 {
+      aspect-ratio: 16 / 9;
+      width: 100%;
+    }
+
+    .stage-frame-9-16 {
+      aspect-ratio: 9 / 16;
+      height: 100%;
+      max-height: 460px;
+      width: auto;
+      margin: 0 auto;
+    }
+
+    /* Custom Scrollbar untuk Editor Kode */
+    textarea::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    textarea::-webkit-scrollbar-track {
+      background: #090E1A;
+      border-radius: 8px;
+    }
+    textarea::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 8px;
+    }
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    /* Animasi Indikator REC Berkedip */
+    @keyframes recBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+    .rec-dot {
+      animation: recBlink 1.1s infinite ease-in-out;
+    }
+
+    /* Dropzone aktif saat drag file */
+    .dropzone-active {
+      border-color: #06D6A0 !important;
+      background-color: rgba(6, 214, 160, 0.1) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-teal-400/30 selection:text-teal-200">
+
+  <!-- ======================================================================= -->
+  <!-- TOP HEADER BAR                                                          -->
+  <!-- ======================================================================= -->
+  <header class="w-full border-b border-slate-800/80 bg-slate-950/75 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <!-- Brand & Judul Studio -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#06D6A0] via-[#10B981] to-[#38BDF8] flex items-center justify-center shadow-lg shadow-teal-500/20 shrink-0">
+          <svg class="w-5 h-5 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="3" />
+            <polygon points="10 9 15 12 10 15 10 9" fill="currentColor" stroke="none" />
+          </svg>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="font-display text-base sm:text-lg font-extrabold tracking-tight text-white truncate">
+              HTML2MP4 Studio
+            </h1>
+            <span id="encoder-capability-badge" class="text-[10px] sm:text-xs font-mono-code font-semibold px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-400/30">
+              Memeriksa Codec...
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 truncate">
+            Konverter Animasi HTML/SVG/Canvas ke Video MP4 Langsung di Browser
+          </p>
+        </div>
+      </div>
+
+      <!-- Tombol Aksi Cepat Header -->
+      <div class="flex items-center gap-2">
+        <input type="file" id="header-file-input" accept=".html,.htm,text/html" class="hidden" />
+        <button
+          id="btn-header-upload"
+          type="button"
+          class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 text-slate-100 border border-slate-700 text-xs sm:text-sm font-medium transition active:scale-95 cursor-pointer"
+        >
+          <svg class="w-4 h-4 text-[#38BDF8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>Unggah File .HTML</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================================= -->
+  <!-- WORKSPACE UTAMA (PREVIEW STAGE + PANEL TAB KONTROL)                     -->
+  <!-- ======================================================================= -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- KOLOM KIRI (7 KOLOM): LIVE PREVIEW STAGE & TRANSPORT CONTROLS -->
+      <section class="lg:col-span-7 flex flex-col gap-3">
+        <div class="studio-glass rounded-2xl p-3 sm:p-4 shadow-2xl">
+          <!-- Bar Informasi Stage Atas -->
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-2.5 h-2.5 rounded-full bg-[#06D6A0] shrink-0"></span>
+              <span id="active-project-title" class="text-xs sm:text-sm font-semibold text-slate-200 truncate">
+                Default: Mengapa Kita Suka Menunda Pekerjaan? (60d)
+              </span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span id="stage-aspect-badge" class="font-mono-code text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                16:9 • 1280×720
+              </span>
+            </div>
+          </div>
+
+          <!-- Wadah Viewport Iframe Preview -->
+          <div id="stage-outer-box" class="w-full bg-[#070B14] rounded-xl border border-slate-800/90 overflow-hidden relative flex items-center justify-center min-h-[220px] sm:min-h-[340px]">
+            <!-- Indikator Live REC saat Render MP4 berjalan -->
+            <div
+              id="stage-rec-badge"
+              class="hidden absolute top-3 left-3 z-20 px-3 py-1 rounded-full bg-rose-950/90 border border-rose-500/60 text-rose-200 text-xs font-mono-code font-bold flex items-center gap-2 shadow-lg pointer-events-none"
+            >
+              <span class="w-2.5 h-2.5 rounded-full bg-[#FF6B6B] rec-dot"></span>
+              <span id="stage-rec-text">MERENDER MP4...</span>
+            </div>
+
+            <!-- Iframe Animasi HTML -->
+            <div id="iframe-aspect-wrapper" class="stage-frame-16-9 relative overflow-hidden bg-[#0F172A] transition-all duration-300">
+              <iframe
+                id="preview-iframe"
+                title="Preview Animasi HTML"
+                class="w-full h-full border-0 block"
+                allow="autoplay"
+              ></iframe>
+            </div>
+          </div>
+
+          <!-- Kontrol Pemutaran Stage (Play/Pause, Restart, Timecode, Mute) -->
+          <div class="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-800/80">
+            <div class="flex items-center gap-2">
+              <button
+                id="btn-stage-play"
+                type="button"
+                class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#06D6A0] hover:bg-[#34D399] text-slate-950 font-bold text-xs sm:text-sm transition active:scale-95 cursor-pointer"
+              >
+                <svg id="stage-icon-play" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l10.6-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z" />
+                </svg>
+                <svg id="stage-icon-pause" class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="4" width="4" height="16" rx="1.5" />
+                  <rect x="14" y="4" width="4" height="16" rx="1.5" />
+                </svg>
+                <span id="stage-label-play">Jeda</span>
+              </button>
+
+              <button
+                id="btn-stage-restart"
+                type="button"
+                title="Ulangi Animasi dari 00:00"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition active:scale-95 cursor-pointer"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+                <span>Ulangi</span>
+              </button>
+
+              <div class="font-mono-code text-xs sm:text-sm px-2.5 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-slate-300">
+                <span id="stage-timecode-now" class="text-white font-bold">00:00</span>
+                <span class="text-slate-500">/</span>
+                <span id="stage-timecode-total">01:00</span>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                id="btn-stage-mute"
+                type="button"
+                title="Bisukan/Bunyikan Audio Preview"
+                class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-medium transition active:scale-95 cursor-pointer"
+              >
+                <svg id="stage-sound-on" class="w-4 h-4 text-[#06D6A0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+                </svg>
+                <svg id="stage-sound-off" class="w-4 h-4 text-[#FF6B6B] hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+                <span id="stage-label-mute">Audio Aktif</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tip Singkat Arsitektur Render -->
+        <div class="studio-card rounded-xl px-4 py-3 flex items-start gap-3 text-xs text-slate-300">
+          <svg class="w-4 h-4 text-[#FFD166] shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <p class="leading-relaxed">
+            <strong class="text-slate-100">Cara Kerja Render:</strong> Mesin studio menyadap output visual (<code class="text-teal-300">&lt;svg&gt;</code>, <code class="text-teal-300">&lt;canvas&gt;</code>, atau DOM) dan <code class="text-teal-300">AudioContext</code> dari animasi secara real-time, lalu mengodekannya ke format <strong>H.264 MP4</strong> melalui WebCodecs &amp; <code class="text-sky-300">mp4-muxer</code>.
+          </p>
+        </div>
+      </section>
+
+      <!-- KOLOM KANAN (5 KOLOM): TABBED CONTROL PANEL -->
+      <aside class="lg:col-span-5 studio-glass rounded-2xl p-3 sm:p-4 shadow-2xl">
+        <!-- Navigasi 3 Tab -->
+        <div role="tablist" class="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-950/90 border border-slate-800/90 mb-4">
+          <button
+            id="tab-btn-render"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            class="tab-nav-btn py-2 px-2 rounded-lg text-xs sm:text-[13px] font-bold bg-slate-800 text-white shadow transition cursor-pointer"
+          >
+            Pengaturan &amp; Render
+          </button>
+          <button
+            id="tab-btn-editor"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="tab-nav-btn py-2 px-2 rounded-lg text-xs sm:text-[13px] font-semibold text-slate-400 hover:text-slate-200 transition cursor-pointer"
+          >
+            Editor Kode HTML
+          </button>
+          <button
+            id="tab-btn-result"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="tab-nav-btn py-2 px-2 rounded-lg text-xs sm:text-[13px] font-semibold text-slate-400 hover:text-slate-200 transition relative flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Hasil Video MP4</span>
+            <span id="result-ready-dot" class="hidden w-2 h-2 rounded-full bg-[#06D6A0]"></span>
+          </button>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 1: PENGATURAN & RENDER MP4                                      -->
+        <!-- =================================================================== -->
+        <div id="tab-panel-render" class="space-y-4">
+          <!-- Pilihan Resolusi -->
+          <div>
+            <label for="select-resolution" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              Resolusi Video Output
+            </label>
+            <select
+              id="select-resolution"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-[#06D6A0] cursor-pointer"
+            >
+              <option value="1280x720" selected>1280 × 720 (HD 16:9 — Direkomendasikan)</option>
+              <option value="1920x1080">1920 × 1080 (Full HD 16:9)</option>
+              <option value="1080x1920">1080 × 1920 (Vertikal 9:16 — Shorts/Reels)</option>
+            </select>
+          </div>
+
+          <!-- Grid FPS & Durasi -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="select-fps" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Frame Rate (FPS)
+              </label>
+              <select
+                id="select-fps"
+                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-[#06D6A0] cursor-pointer"
+              >
+                <option value="30" selected>30 FPS (Standar)</option>
+                <option value="60">60 FPS (Super Halus)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="input-duration" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Durasi Target (Detik)
+              </label>
+              <input
+                id="input-duration"
+                type="number"
+                min="5"
+                max="300"
+                value="60"
+                class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 font-mono-code text-sm text-slate-100 focus:outline-none focus:border-[#06D6A0]"
+              />
+            </div>
+          </div>
+
+          <!-- Preset Cepat Durasi -->
+          <div class="flex items-center justify-between gap-2 text-xs">
+            <span class="text-slate-400">Preset Durasi:</span>
+            <div class="flex items-center gap-1.5">
+              <button type="button" data-dur="10" class="dur-preset-btn px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono-code cursor-pointer">10d</button>
+              <button type="button" data-dur="30" class="dur-preset-btn px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-mono-code cursor-pointer">30d</button>
+              <button type="button" data-dur="60" class="dur-preset-btn px-2.5 py-1 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-400/40 font-mono-code font-bold cursor-pointer">60d</button>
+            </div>
+          </div>
+
+          <!-- Mode Penangkapan Visual -->
+          <div>
+            <label for="select-capture-mode" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+              Mode Penangkapan Frame
+            </label>
+            <select
+              id="select-capture-mode"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-[#06D6A0] cursor-pointer"
+            >
+              <option value="auto" selected>Otomatis (SVG Vektor / Canvas / DOM)</option>
+              <option value="display">Tangkap Layar Stage (getDisplayMedia)</option>
+            </select>
+          </div>
+
+          <!-- Toggle Sertakan Audio -->
+          <div class="studio-card rounded-xl p-3 flex items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-semibold text-slate-100">Sertakan Audio ke MP4</div>
+              <div class="text-xs text-slate-400">Rekam musik &amp; SFX Web Audio API dari animasi</div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+              <input id="toggle-include-audio" type="checkbox" checked class="sr-only peer" />
+              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#06D6A0]"></div>
+            </label>
+          </div>
+
+          <!-- Tombol Utama Mulai Render MP4 -->
+          <div class="pt-1 space-y-2">
+            <button
+              id="btn-start-render"
+              type="button"
+              class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#06D6A0] to-[#10B981] hover:from-[#34D399] hover:to-[#06D6A0] text-slate-950 font-display font-extrabold text-sm sm:text-base shadow-lg shadow-teal-500/25 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="12" cy="12" r="8" />
+              </svg>
+              <span>Mulai Render MP4</span>
+            </button>
+
+            <!-- Tombol Saat Rendering Aktif (Hentikan & Simpan / Batalkan) -->
+            <div id="active-render-actions" class="hidden grid grid-cols-2 gap-2">
+              <button
+                id="btn-stop-save-render"
+                type="button"
+                class="py-3 px-3 rounded-xl bg-[#FFD166] hover:bg-amber-300 text-slate-950 font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition active:scale-95 cursor-pointer"
+              >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+                <span>Hentikan &amp; Simpan</span>
+              </button>
+              <button
+                id="btn-cancel-render"
+                type="button"
+                class="py-3 px-3 rounded-xl bg-slate-800 hover:bg-rose-950/80 text-rose-300 border border-rose-500/40 font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer"
+              >
+                <span>Batalkan</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PANEL PROGRES RENDERING LANGSUNG -->
+          <div id="render-progress-panel" class="hidden studio-card rounded-xl p-3.5 space-y-2.5 border border-teal-400/30">
+            <div class="flex items-center justify-between text-xs">
+              <span id="render-status-text" class="font-semibold text-teal-300">Menyiapkan encoder H.264...</span>
+              <span id="render-percent-text" class="font-mono-code font-bold text-white">0%</span>
+            </div>
+
+            <!-- Bar Progres -->
+            <div class="w-full h-2.5 rounded-full bg-slate-900 overflow-hidden">
+              <div
+                id="render-progress-bar"
+                class="h-full rounded-full bg-gradient-to-r from-[#38BDF8] via-[#06D6A0] to-[#FFD166] w-0 transition-all duration-150"
+              ></div>
+            </div>
+
+            <!-- Detail Statistik Frame & Waktu -->
+            <div class="grid grid-cols-2 gap-2 pt-1 font-mono-code text-[11px] text-slate-400">
+              <div>Frame: <span id="render-frame-count" class="text-slate-200 font-semibold">0 / 1800</span></div>
+              <div class="text-right">Waktu: <span id="render-elapsed-time" class="text-slate-200 font-semibold">00:00 / 01:00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 2: EDITOR KODE HTML & UNGGAH FILE                               -->
+        <!-- =================================================================== -->
+        <div id="tab-panel-editor" class="hidden space-y-3">
+          <!-- Dropzone Unggah File .HTML -->
+          <div
+            id="editor-dropzone"
+            class="border-2 border-dashed border-slate-700 hover:border-teal-400/60 rounded-xl p-3.5 text-center transition cursor-pointer bg-slate-900/50"
+          >
+            <input type="file" id="editor-file-input" accept=".html,.htm,text/html" class="hidden" />
+            <div class="flex flex-col items-center justify-center gap-1">
+              <svg class="w-6 h-6 text-[#38BDF8]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+              <p class="text-xs font-semibold text-slate-200">
+                Seret &amp; lepas file <span class="text-[#06D6A0]">.html</span> di sini, atau klik untuk memilih
+              </p>
+              <p class="text-[11px] text-slate-400">Mendukung SVG, Canvas 2D/3D, CSS Keyframes, &amp; Web Audio</p>
+            </div>
+          </div>
+
+          <!-- Editor Kode HTML Monospace -->
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="html-code-textarea" class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                Kode Sumber HTML Animasi
+              </label>
+              <span id="code-char-count" class="font-mono-code text-[11px] text-slate-400">0 karakter</span>
+            </div>
+            <textarea
+              id="html-code-textarea"
+              rows="11"
+              spellcheck="false"
+              placeholder="Tempelkan kode HTML animasi Anda di sini..."
+              class="w-full p-3 rounded-xl bg-[#070B14] border border-slate-700/90 font-mono-code text-xs leading-relaxed text-teal-100 focus:outline-none focus:border-[#06D6A0] resize-y"
+            ></textarea>
+          </div>
+
+          <!-- Tombol Aksi Editor -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <button
+              id="btn-reset-default"
+              type="button"
+              class="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95 cursor-pointer"
+            >
+              Reset ke Animasi Default (60s)
+            </button>
+            <button
+              id="btn-apply-html"
+              type="button"
+              class="py-2.5 px-3 rounded-xl bg-[#06D6A0] hover:bg-[#34D399] text-slate-950 font-bold text-xs shadow-md transition active:scale-95 cursor-pointer"
+            >
+              Terapkan ke Preview
+            </button>
+          </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- TAB 3: HASIL VIDEO MP4 & UNDUH                                      -->
+        <!-- =================================================================== -->
+        <div id="tab-panel-result" class="hidden space-y-4">
+          <!-- State Kosong (Belum Ada Render) -->
+          <div id="result-empty-state" class="studio-card rounded-xl p-6 text-center space-y-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-800 mx-auto flex items-center justify-center text-slate-400">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="23 7 16 12 23 17 23 7" />
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+            </div>
+            <div>
+              <h3 class="font-display font-bold text-sm text-slate-200">Belum Ada Video MP4</h3>
+              <p class="text-xs text-slate-400 mt-1">
+                Klik tombol <strong>Mulai Render MP4</strong> pada tab pertama untuk mengonversi animasi menjadi file video MP4.
+              </p>
+            </div>
+            <button
+              id="btn-goto-render-tab"
+              type="button"
+              class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 text-xs font-semibold cursor-pointer"
+            >
+              Ke Pengaturan Render
+            </button>
+          </div>
+
+          <!-- State Video Tersedia -->
+          <div id="result-ready-state" class="hidden space-y-3.5">
+            <!-- Pemutar Video HTML5 -->
+            <div class="rounded-xl overflow-hidden bg-black border border-slate-700/90 shadow-xl">
+              <video
+                id="output-video-player"
+                controls
+                playsinline
+                class="w-full max-h-[280px] mx-auto block"
+              ></video>
+            </div>
+
+            <!-- Metadata Teknis MP4 -->
+            <div class="studio-card rounded-xl p-3 grid grid-cols-2 gap-2.5 text-xs">
+              <div>
+                <span class="text-slate-400 block text-[11px]">Ukuran File</span>
+                <span id="meta-file-size" class="font-mono-code font-bold text-white">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">Resolusi &amp; FPS</span>
+                <span id="meta-res-fps" class="font-mono-code font-bold text-teal-300">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">Durasi Video</span>
+                <span id="meta-duration" class="font-mono-code font-bold text-white">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">Format &amp; Codec</span>
+                <span id="meta-codec" class="font-mono-code font-bold text-amber-300">MP4 (H.264 AVC)</span>
+              </div>
+            </div>
+
+            <!-- Tombol Unduh File .MP4 -->
+            <button
+              id="btn-download-mp4"
+              type="button"
+              class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#06D6A0] to-[#38BDF8] hover:opacity-95 text-slate-950 font-display font-extrabold text-sm sm:text-base shadow-lg shadow-teal-500/20 flex items-center justify-center gap-2 transition active:scale-[0.98] cursor-pointer"
+            >
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span>Unduh File .MP4</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- NOTIFIKASI TOAST STUDIO (NON-INTRUSIF) -->
+  <div
+    id="studio-toast"
+    class="fixed bottom-5 right-5 z-50 studio-glass px-4 py-3 rounded-xl shadow-2xl border border-teal-400/40 text-xs sm:text-sm text-slate-100 flex items-center gap-2.5 translate-y-24 opacity-0 transition-all duration-300 pointer-events-none"
+  >
+    <span id="studio-toast-dot" class="w-2.5 h-2.5 rounded-full bg-[#06D6A0]"></span>
+    <span id="studio-toast-msg">Notifikasi Studio</span>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- LOGIKA UTAMA STUDIO & MESIN RENDER HTML KE MP4                          -->
+  <!-- ======================================================================= -->
+  <script>
+    (function () {
+      'use strict';
+
+      // =========================================================================
+      // 1. ANIMASI DEFAULT 60 DETIK: "MENGAPA KITA SUKA MENUNDA PEKERJAAN?"
+      //    (4 Adegan Vektor SVG + Subtitle Tersinkronisasi + Web Audio API)
+      // =========================================================================
+      const DEFAULT_ANIMATION_HTML = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mengapa Kita Suka Menunda Pekerjaan? (01:00)</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #090E1A;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    svg#scene-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <svg id="scene-svg" viewBox="0 0 1280 720" width="1280" height="720" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="bg-radial" cx="50%" cy="45%" r="68%">
+        <stop offset="0%" stop-color="#1E293B" />
+        <stop offset="65%" stop-color="#0F172A" />
+        <stop offset="100%" stop-color="#090E1A" />
+      </radialGradient>
+      <radialGradient id="ambient-glow" cx="50%" cy="50%" r="50%">
+        <stop id="glow-stop" offset="0%" stop-color="#FF6B6B" stop-opacity="0.24" />
+        <stop offset="100%" stop-color="#0F172A" stop-opacity="0" />
+      </radialGradient>
+      <linearGradient id="phone-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FF6B6B" />
+        <stop offset="55%" stop-color="#F43F5E" />
+        <stop offset="100%" stop-color="#8B5CF6" />
+      </linearGradient>
+      <linearGradient id="laptop-beam" x1="50%" y1="100%" x2="50%" y2="0%">
+        <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.3" />
+        <stop offset="100%" stop-color="#38BDF8" stop-opacity="0" />
+      </linearGradient>
+    </defs>
+
+    <!-- LATAR BELAKANG & PARTIKEL -->
+    <rect width="1280" height="720" fill="url(#bg-radial)" />
+    <circle cx="640" cy="340" r="390" fill="url(#ambient-glow)" />
+    <g fill="#94A3B8" opacity="0.16">
+      <circle cx="150" cy="110" r="2.5" /><circle cx="360" cy="90" r="2.5" /><circle cx="640" cy="80" r="2.5" />
+      <circle cx="920" cy="95" r="2.5" /><circle cx="1130" cy="120" r="2.5" /><circle cx="120" cy="330" r="2.5" />
+      <circle cx="1160" cy="340" r="2.5" />
+    </g>
+    <g id="particles">
+      <circle id="p1" cx="195" cy="215" r="6" fill="#06D6A0" opacity="0.4" />
+      <rect id="p2" x="1080" y="175" width="12" height="12" rx="3" fill="#FFD166" opacity="0.4" />
+      <polygon id="p3" points="250,450 258,464 242,464" fill="#FF6B6B" opacity="0.4" />
+      <circle id="p4" cx="1040" cy="435" r="8" fill="#38BDF8" opacity="0.35" />
+    </g>
+
+    <!-- BADGE ADEGAN & TIMECODE DI DALAM SVG -->
+    <g transform="translate(36, 30)">
+      <rect x="0" y="0" width="235" height="34" rx="17" fill="#0F172A" fill-opacity="0.82" stroke="#334155" stroke-width="1.5" />
+      <circle id="svg-scene-dot" cx="20" cy="17" r="5" fill="#FF6B6B" />
+      <text id="svg-scene-label" x="34" y="22" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#F8FAFC">01 • HOOK</text>
+    </g>
+    <g transform="translate(1115, 30)">
+      <rect x="0" y="0" width="130" height="34" rx="17" fill="#0F172A" fill-opacity="0.82" stroke="#334155" stroke-width="1.5" />
+      <text id="svg-timecode" x="65" y="22" text-anchor="middle" font-family="monospace" font-weight="700" font-size="14" fill="#CBD5E1">00:00 / 01:00</text>
+    </g>
+
+    <!-- ===================================================================== -->
+    <!-- LAPISAN 1: MEJA KERJA (ADEGAN 1: 00:00-00:10 & ADEGAN 4: 00:45-01:00) -->
+    <!-- ===================================================================== -->
+    <g id="layer-desk">
+      <!-- Rak Buku & Tanaman -->
+      <g transform="translate(1030, 175)">
+        <rect x="-75" y="45" width="150" height="8" rx="4" fill="#334155" />
+        <rect x="-58" y="3" width="14" height="42" rx="3" fill="#FF6B6B" />
+        <rect x="-41" y="9" width="12" height="36" rx="3" fill="#FFD166" />
+        <rect x="-26" y="0" width="15" height="45" rx="3" fill="#06D6A0" />
+        <path d="M22,22 L48,22 L44,45 L26,45 Z" fill="#F8FAFC" />
+        <path d="M35,22 C24,8 14,12 18,22 Z" fill="#06D6A0" />
+        <path d="M35,22 C46,6 56,12 52,22 Z" fill="#10B981" />
+      </g>
+
+      <!-- Jam Dinding -->
+      <g transform="translate(235, 185)">
+        <circle id="clock-ring" cx="0" cy="0" r="66" fill="none" stroke="#FFD166" stroke-width="4" stroke-dasharray="18 14" opacity="0" />
+        <circle cx="0" cy="0" r="56" fill="#1E293B" stroke="#F8FAFC" stroke-width="6" />
+        <circle cx="0" cy="0" r="46" fill="#0F172A" />
+        <rect x="-2" y="-41" width="4" height="9" rx="2" fill="#FFD166" />
+        <rect x="32" y="-2" width="9" height="4" rx="2" fill="#94A3B8" />
+        <rect x="-2" y="32" width="4" height="9" rx="2" fill="#94A3B8" />
+        <rect x="-41" y="-2" width="9" height="4" rx="2" fill="#94A3B8" />
+        <line id="clock-hr" x1="0" y1="0" x2="0" y2="-24" stroke="#FF6B6B" stroke-width="5" stroke-linecap="round" />
+        <line id="clock-min" x1="0" y1="0" x2="26" y2="0" stroke="#F8FAFC" stroke-width="3.5" stroke-linecap="round" />
+        <circle cx="0" cy="0" r="5" fill="#FFD166" />
+      </g>
+
+      <!-- Karakter di Meja -->
+      <g transform="translate(640, 345)">
+        <rect x="-78" y="-15" width="156" height="145" rx="28" fill="#1E293B" stroke="#334155" stroke-width="4" />
+        <path d="M-85,155 C-85,78 -48,55 0,55 C48,55 85,78 85,155 Z" fill="#3B82F6" />
+        <path d="M-32,57 L0,92 L32,57" fill="none" stroke="#1D4ED8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+        <rect x="-15" y="28" width="30" height="34" rx="12" fill="#FDBA74" />
+
+        <g id="char-head" transform="translate(0, -12)">
+          <circle cx="-48" cy="4" r="11" fill="#FDBA74" />
+          <circle cx="48" cy="4" r="11" fill="#FDBA74" />
+          <rect x="-46" y="-48" width="92" height="98" rx="44" fill="#FED7AA" />
+          <path d="M-50,-12 C-52,-58 -22,-72 10,-68 C38,-65 54,-46 50,-10 C42,-28 24,-34 0,-32 C-24,-30 -40,-24 -50,-12 Z" fill="#0F172A" />
+          <line x1="-28" y1="-16" x2="-10" y2="-18" stroke="#0F172A" stroke-width="4" stroke-linecap="round" />
+          <line x1="10" y1="-18" x2="28" y2="-16" stroke="#0F172A" stroke-width="4" stroke-linecap="round" />
+          <circle cx="-18" cy="-3" r="6" fill="#0F172A" />
+          <circle id="pupil-l" cx="-16" cy="-5" r="2" fill="#F8FAFC" />
+          <circle cx="18" cy="-3" r="6" fill="#0F172A" />
+          <circle id="pupil-r" cx="20" cy="-5" r="2" fill="#F8FAFC" />
+          <path id="mouth-neutral" d="M-10,20 Q0,23 10,20" fill="none" stroke="#9A3412" stroke-width="3.5" stroke-linecap="round" />
+          <path id="mouth-smile" d="M-16,16 Q0,33 16,16" fill="none" stroke="#9A3412" stroke-width="4" stroke-linecap="round" opacity="0" />
+        </g>
+      </g>
+
+      <!-- Tumpukan Dokumen (Adegan 1) -->
+      <g id="doc-stacks">
+        <g transform="translate(365, 495)">
+          <rect x="-46" y="-18" width="92" height="18" rx="4" fill="#E2E8F0" />
+          <rect x="-44" y="-36" width="88" height="18" rx="4" fill="#CBD5E1" />
+          <rect x="-48" y="-54" width="96" height="18" rx="4" fill="#F8FAFC" />
+          <rect x="-43" y="-72" width="86" height="18" rx="4" fill="#E2E8F0" />
+          <rect x="-47" y="-90" width="94" height="18" rx="4" fill="#F8FAFC" />
+          <rect x="-42" y="-108" width="84" height="18" rx="4" fill="#CBD5E1" />
+          <rect x="-45" y="-126" width="90" height="18" rx="4" fill="#F8FAFC" />
+          <rect x="18" y="-134" width="22" height="14" rx="2" fill="#FF6B6B" transform="rotate(8 28 -127)" />
+        </g>
+        <g transform="translate(465, 495)">
+          <rect x="-40" y="-16" width="80" height="16" rx="4" fill="#CBD5E1" />
+          <rect x="-38" y="-32" width="76" height="16" rx="4" fill="#F8FAFC" />
+          <rect x="-42" y="-48" width="84" height="16" rx="4" fill="#E2E8F0" />
+          <rect x="-39" y="-64" width="78" height="16" rx="4" fill="#FFD166" />
+          <rect x="-37" y="-80" width="74" height="16" rx="4" fill="#F8FAFC" />
+        </g>
+        <g transform="translate(835, 495)">
+          <rect x="-42" y="-17" width="84" height="17" rx="4" fill="#E2E8F0" />
+          <rect x="-40" y="-34" width="80" height="17" rx="4" fill="#F8FAFC" />
+          <rect x="-44" y="-51" width="88" height="17" rx="4" fill="#CBD5E1" />
+          <rect x="-39" y="-68" width="78" height="17" rx="4" fill="#F8FAFC" />
+          <rect x="-41" y="-85" width="82" height="17" rx="4" fill="#FF6B6B" />
+        </g>
+      </g>
+
+      <!-- Folder Rapi & Puzzle Selesai (Adegan 4) -->
+      <g id="neat-desk-s4" opacity="0">
+        <g transform="translate(415, 495)">
+          <rect x="-65" y="-44" width="130" height="44" rx="8" fill="#06D6A0" />
+          <rect x="-58" y="-36" width="116" height="10" rx="4" fill="#F8FAFC" opacity="0.85" />
+          <circle cx="42" cy="-16" r="13" fill="#0F172A" />
+          <polyline points="36,-16 40,-12 49,-21" fill="none" stroke="#06D6A0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+        <g transform="translate(845, 455)">
+          <rect x="-58" y="-40" width="116" height="80" rx="14" fill="#1E293B" stroke="#06D6A0" stroke-width="3" />
+          <rect x="-44" y="-28" width="42" height="26" rx="5" fill="#06D6A0" />
+          <rect x="2" y="-28" width="42" height="26" rx="5" fill="#FFD166" />
+          <rect x="-44" y="2" width="42" height="26" rx="5" fill="#38BDF8" />
+          <rect x="2" y="2" width="42" height="26" rx="5" fill="#FF6B6B" />
+          <circle cx="0" cy="0" r="16" fill="#0F172A" />
+          <polyline points="-7,0 -2,5 8,-6" fill="none" stroke="#06D6A0" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+        </g>
+      </g>
+
+      <!-- Laptop -->
+      <g transform="translate(640, 495)">
+        <polygon points="-75,-88 75,-88 125,-185 -125,-185" fill="url(#laptop-beam)" />
+        <rect x="-82" y="-96" width="164" height="92" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="3" />
+        <circle cx="0" cy="-50" r="14" fill="#38BDF8" opacity="0.85" />
+        <circle cx="0" cy="-50" r="6" fill="#F8FAFC" />
+        <rect x="-98" y="-6" width="196" height="8" rx="4" fill="#94A3B8" />
+      </g>
+
+      <!-- Meja Kerja -->
+      <g transform="translate(640, 495)">
+        <rect x="-420" y="0" width="840" height="18" rx="9" fill="#475569" />
+        <rect x="-390" y="18" width="780" height="130" fill="#1E293B" />
+      </g>
+
+      <!-- Ikon Ponsel Raksasa (Muncul di 00:03) -->
+      <g id="giant-phone" transform="translate(945, 285) scale(0)">
+        <circle cx="0" cy="0" r="122" fill="none" stroke="#FF6B6B" stroke-width="2.5" stroke-dasharray="10 10" opacity="0.55" />
+        <g transform="rotate(-8)">
+          <rect x="-68" y="-122" width="136" height="244" rx="24" fill="#0F172A" stroke="#F8FAFC" stroke-width="5" />
+          <rect x="-56" y="-102" width="112" height="196" rx="14" fill="url(#phone-grad)" />
+          <rect x="-22" y="-102" width="44" height="10" rx="5" fill="#0F172A" />
+          <rect x="-44" y="-80" width="88" height="58" rx="8" fill="#F8FAFC" opacity="0.92" />
+          <polygon points="-8,-58 12,-48 -8,-38" fill="#FF6B6B" />
+          <rect x="-44" y="-12" width="64" height="10" rx="5" fill="#F8FAFC" opacity="0.85" />
+          <rect x="-44" y="4" width="82" height="8" rx="4" fill="#F8FAFC" opacity="0.55" />
+          <rect x="-44" y="24" width="88" height="54" rx="8" fill="#0F172A" opacity="0.35" />
+          <circle cx="-20" cy="51" r="14" fill="#FFD166" />
+        </g>
+        <g id="badge-heart" transform="translate(-88, -65)">
+          <circle cx="0" cy="0" r="24" fill="#FF6B6B" stroke="#F8FAFC" stroke-width="3" />
+          <path d="M0,9 C-12,0 -13,-10 -5,-10 C-1,-10 0,-6 0,-6 C0,-6 1,-10 5,-10 C13,-10 12,0 0,9 Z" fill="#F8FAFC" />
+        </g>
+        <g id="badge-notif" transform="translate(84, -82)">
+          <rect x="-28" y="-18" width="56" height="36" rx="18" fill="#FFD166" stroke="#0F172A" stroke-width="3" />
+          <text x="0" y="6" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="16" fill="#0F172A">99+</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- ===================================================================== -->
+    <!-- LAPISAN 2: OTAK, AMIGDALA & ATURAN 5 MENIT (ADEGAN 2 & 3: 00:10-00:45)-->
+    <!-- ===================================================================== -->
+    <g id="layer-brain" opacity="0">
+      <!-- Siluet Kepala & Otak -->
+      <g transform="translate(385, 365)">
+        <path d="M-115,250 C-115,175 -65,155 -25,150 L-25,105 L55,105 L55,150 C95,155 135,180 140,250 Z" fill="#1E293B" stroke="#334155" stroke-width="3" />
+        <path d="M-95,-20 C-95,-125 -15,-175 75,-155 C135,-142 162,-95 162,-42 L182,-12 C186,-5 181,4 172,5 L160,7 L160,36 C160,44 152,50 144,50 L152,65 C154,71 149,77 142,78 L136,79 L136,102 C136,125 115,138 82,138 L-30,138 C-75,138 -95,85 -95,-20 Z" fill="#1E293B" stroke="#475569" stroke-width="4" />
+
+        <circle id="brain-wave-1" cx="25" cy="-35" r="95" fill="none" stroke="#FF4D4D" stroke-width="3" opacity="0.4" />
+        <circle id="brain-wave-2" cx="25" cy="-35" r="130" fill="none" stroke="#FF4D4D" stroke-width="2" opacity="0.25" />
+
+        <!-- Vektor Otak -->
+        <g transform="translate(22, -38)">
+          <path id="brain-shape" d="M-78,12 C-92,-12 -82,-48 -55,-62 C-42,-86 -8,-94 22,-84 C54,-92 86,-72 92,-42 C108,-24 104,10 84,26 C76,46 52,54 32,46 C14,56 -14,54 -28,42 C-52,48 -72,34 -78,12 Z" fill="#FF4D4D" opacity="0.95" />
+          <ellipse id="brain-sub" cx="-36" cy="54" rx="28" ry="16" fill="#DC2626" />
+          <g fill="none" stroke="#0F172A" stroke-width="4.5" stroke-linecap="round" opacity="0.55">
+            <path d="M-45,-35 C-25,-45 -10,-25 10,-35 C28,-44 48,-30 62,-18" />
+            <path d="M-55,0 C-32,-8 -12,8 12,-2 C34,-10 55,4 72,0" />
+            <path d="M-25,-65 C-18,-45 -22,-22 -12,-5" />
+            <path d="M32,-68 C26,-46 34,-24 24,-4" />
+          </g>
+          <!-- Inti Amigdala -->
+          <g id="amygdala-group" transform="translate(4, 8)">
+            <circle cx="0" cy="0" r="24" fill="#FFD166" opacity="0.35" />
+            <circle id="amygdala-ring" cx="0" cy="0" r="14" fill="#FFFBEB" stroke="#FF4D4D" stroke-width="4" />
+            <g id="amygdala-alert">
+              <rect x="-2" y="-7" width="4" height="8" rx="2" fill="#DC2626" />
+              <circle cx="0" cy="5" r="2.2" fill="#DC2626" />
+            </g>
+            <g id="amygdala-ok" opacity="0">
+              <polyline points="-6,0 -2,4 7,-5" fill="none" stroke="#059669" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" />
+            </g>
+          </g>
+        </g>
+      </g>
+
+      <!-- Gelembung Hiburan Instan (Adegan 2) -->
+      <g id="bub-game" transform="translate(610, 170) scale(0)">
+        <circle cx="0" cy="0" r="46" fill="#1E293B" stroke="#FFD166" stroke-width="3.5" />
+        <path d="M-20,-4 C-22,-12 -14,-16 -8,-14 L8,-14 C14,-16 22,-12 20,-4 L23,10 C24,16 17,19 13,14 L7,7 L-7,7 L-13,14 C-17,19 -24,16 -23,10 Z" fill="#FFD166" />
+        <circle cx="11" cy="-5" r="2.5" fill="#FF6B6B" />
+        <circle cx="15" cy="-1" r="2.5" fill="#06D6A0" />
+      </g>
+      <g id="bub-video" transform="translate(650, 340) scale(0)">
+        <circle cx="0" cy="0" r="42" fill="#1E293B" stroke="#FF6B6B" stroke-width="3.5" />
+        <rect x="-22" y="-15" width="44" height="30" rx="8" fill="#FF6B6B" />
+        <polygon points="-5,-8 11,0 -5,8" fill="#F8FAFC" />
+      </g>
+      <g id="bub-social" transform="translate(555, 500) scale(0)">
+        <circle cx="0" cy="0" r="36" fill="#1E293B" stroke="#F472B6" stroke-width="3" />
+        <path d="M0,12 C-16,0 -17,-14 -6,-14 C-1,-14 0,-8 0,-8 C0,-8 1,-14 6,-14 C17,-14 16,0 0,12 Z" fill="#F472B6" />
+      </g>
+
+      <!-- Blok Berat "TUGAS BERAT" -->
+      <g id="heavy-block" transform="translate(930, 345)">
+        <path d="M-45,-95 L-45,-122 C-45,-134 45,-134 45,-122 L45,-95" fill="none" stroke="#64748B" stroke-width="14" stroke-linecap="round" />
+        <rect x="-135" y="-95" width="270" height="190" rx="22" fill="#1E293B" stroke="#FF4D4D" stroke-width="5" />
+        <rect x="-118" y="-78" width="236" height="156" rx="14" fill="#0F172A" stroke="#334155" stroke-width="2" stroke-dasharray="10 8" />
+        <polygon points="0,-54 -14,-24 2,-24 -6,4 18,-30 2,-30" fill="#FF4D4D" />
+        <text x="0" y="34" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="28" fill="#F8FAFC">TUGAS BERAT</text>
+        <text x="0" y="60" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="14" fill="#FF6B6B">Terasa Terlalu Besar &amp; Rumit</text>
+      </g>
+
+      <!-- Garis Potong Laser -->
+      <g id="laser-cut" transform="translate(930, 345)" opacity="0">
+        <line x1="-155" y1="0" x2="155" y2="0" stroke="#06D6A0" stroke-width="6" stroke-linecap="round" />
+        <line x1="-45" y1="-115" x2="-45" y2="115" stroke="#FFD166" stroke-width="5" stroke-linecap="round" />
+        <line x1="45" y1="-115" x2="45" y2="115" stroke="#FFD166" stroke-width="5" stroke-linecap="round" />
+      </g>
+
+      <!-- Timer Digital 05:00 (Adegan 3) -->
+      <g id="timer-card" transform="translate(930, 195) scale(0)">
+        <rect x="-150" y="-64" width="300" height="128" rx="28" fill="#1E293B" stroke="#06D6A0" stroke-width="4" />
+        <circle cx="-86" cy="0" r="34" fill="none" stroke="#0F172A" stroke-width="7" />
+        <circle id="timer-ring" cx="-86" cy="0" r="34" fill="none" stroke="#06D6A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="0" transform="rotate(-90 -86 0)" />
+        <text x="26" y="-22" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="13" fill="#06D6A0">ATURAN 5 MENIT</text>
+        <text id="timer-text" x="26" y="28" text-anchor="middle" font-family="monospace" font-weight="700" font-size="46" fill="#F8FAFC">05:00</text>
+      </g>
+
+      <!-- Kepingan Puzzle (Adegan 3) -->
+      <g id="puzzle-group" transform="translate(930, 415)" opacity="0">
+        <g id="pz-1" transform="translate(-85, -38)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#06D6A0" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Langkah 1</text>
+        </g>
+        <g id="pz-2" transform="translate(0, -38)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#FFD166" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Langkah 2</text>
+        </g>
+        <g id="pz-3" transform="translate(85, -38)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#38BDF8" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Langkah 3</text>
+        </g>
+        <g id="pz-4" transform="translate(-85, 34)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#FF6B6B" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Langkah 4</text>
+        </g>
+        <g id="pz-5" transform="translate(0, 34)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#34D399" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Langkah 5</text>
+        </g>
+        <g id="pz-6" transform="translate(85, 34)">
+          <rect x="-36" y="-26" width="72" height="52" rx="10" fill="#FBBF24" />
+          <text x="0" y="5" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">Selesai!</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- ===================================================================== -->
+    <!-- LAPISAN 3: TIPOGRAFI KINETIK CTA (ADEGAN 4: 00:45 - 01:00)            -->
+    <!-- ===================================================================== -->
+    <g id="layer-cta" opacity="0">
+      <g id="cta-sparkles">
+        <polygon points="365,115 371,129 385,135 371,141 365,155 359,141 345,135 359,129" fill="#FFD166" />
+        <polygon points="920,110 925,122 937,127 925,132 920,144 915,132 903,127 915,122" fill="#06D6A0" />
+        <circle cx="420" cy="205" r="7" fill="#FF6B6B" />
+        <circle cx="865" cy="205" r="7" fill="#38BDF8" />
+      </g>
+      <g id="cta-card" transform="translate(640, 148) scale(0.8)">
+        <rect x="-95" y="-64" width="190" height="28" rx="14" fill="#06D6A0" />
+        <text x="0" y="-45" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="13" fill="#0F172A">LANGKAH TERKECIL</text>
+        <text x="0" y="12" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="800" font-size="50" fill="#F8FAFC">Mulai 5 Menit Sekarang!</text>
+        <rect x="-240" y="28" width="480" height="7" rx="3.5" fill="#FFD166" />
+      </g>
+    </g>
+
+    <!-- ===================================================================== -->
+    <!-- KOTAK SUBTITLE TERSINKRONISASI (Ikut Ter-render ke dalam Video MP4)  -->
+    <!-- ===================================================================== -->
+    <g transform="translate(640, 652)">
+      <rect x="-540" y="-38" width="1080" height="74" rx="18" fill="#0F172A" fill-opacity="0.88" stroke="#334155" stroke-width="1.5" />
+      <text id="sub-line-1" x="0" y="-6" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="20" fill="#F8FAFC">
+        Pernahkah kamu berniat mengerjakan tugas, tapi malah berakhir menggulir media sosial berjam-jam?
+      </text>
+      <text id="sub-line-2" x="0" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="20" fill="#CBD5E1">
+        Tenang, kamu bukan pemalas—otakmu hanya sedang mencari jalan pintas.
+      </text>
+    </g>
+  </svg>
+
+  <script>
+    (function () {
+      const DURATION = 60.0;
+      const SCENES = [
+        {
+          start: 0, end: 10, badge: '01 • HOOK', color: '#FF6B6B',
+          line1: 'Pernahkah kamu berniat mengerjakan tugas, tapi malah berakhir menggulir media sosial berjam-jam?',
+          line2: 'Tenang, kamu bukan pemalas—otakmu hanya sedang mencari jalan pintas.'
+        },
+        {
+          start: 10, end: 25, badge: '02 • OTAK & AMIGDALA', color: '#FF4D4D',
+          line1: 'Saat melihat tugas yang terasa berat, bagian otak bernama amigdala menganggapnya ancaman stres.',
+          line2: 'Akibatnya, otak langsung mendorong kita mencari hiburan instan demi rasa nyaman sementara.'
+        },
+        {
+          start: 25, end: 45, badge: '03 • ATURAN 5 MENIT', color: '#06D6A0',
+          line1: 'Gunakan Aturan Lima Menit: berjanjilah mengerjakan tugas itu selama lima menit saja.',
+          line2: 'Begitu kamu mulai, rasa cemas di otak perlahan hilang dan fokus akan mengambil alih.'
+        },
+        {
+          start: 45, end: 60, badge: '04 • KESIMPULAN & CTA', color: '#FFD166',
+          line1: 'Kunci melawan penundaan bukanlah menunggu motivasi datang, melainkan memulai langkah terkecil.',
+          line2: 'Tugas apa yang ingin kamu selesaikan hari ini? Mulai lima menit sekarang!'
+        }
+      ];
+
+      let currentTime = 0;
+      let isPlaying = true;
+      let isMuted = false;
+      let lastTs = null;
+      let lastStep = -1;
+      let sfxDone = new Set();
+
+      // Web Audio Procedural Engine
+      let audioCtx = null;
+      let masterGain = null;
+      function ensureAudio() {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return;
+          audioCtx = new AC();
+          masterGain = audioCtx.createGain();
+          masterGain.gain.value = isMuted ? 0 : 0.35;
+          masterGain.connect(audioCtx.destination);
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume().catch(() => {});
+        }
+      }
+
+      function playTone(freq, dur = 0.22, type = 'sine', vol = 0.28) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, now);
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(vol, now + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + dur + 0.02);
+      }
+
+      function stepAudio(t) {
+        ensureAudio();
+        if (!audioCtx || audioCtx.state !== 'running') return;
+        if (masterGain) {
+          const fade = t >= 57.5 ? Math.max(0, 1 - (t - 57.5) / 2.5) : 1;
+          masterGain.gain.setTargetAtTime((isMuted ? 0 : 0.35) * fade, audioCtx.currentTime, 0.05);
+        }
+        const step = Math.floor(t * 4);
+        if (step !== lastStep) {
+          lastStep = step;
+          const m1 = [523.25, 659.25, 783.99, 659.25, 880, 783.99, 659.25, 587.33];
+          const m2 = [440, 523.25, 659.25, 698.46, 659.25, 523.25, 493.88, 415.3];
+          const m3 = [349.23, 440, 523.25, 659.25, 392, 493.88, 587.33, 783.99];
+          const m4 = [523.25, 659.25, 783.99, 1046.5, 987.77, 783.99, 659.25, 783.99];
+          let f = m1[step % 8];
+          if (t >= 10 && t < 25) f = m2[step % 8];
+          else if (t >= 25 && t < 45) f = m3[step % 8];
+          else if (t >= 45) f = m4[step % 8];
+
+          if (step % 2 === 0 || step % 8 === 3) playTone(f, 0.24, 'sine', 0.24);
+          if (step % 4 === 0) playTone(f * 0.25, 0.42, 'triangle', 0.28);
+          if (t >= 3.2 && t <= 9.8) playTone(step % 2 === 0 ? 1250 : 880, 0.04, 'sine', 0.14);
+          if (t >= 30 && t <= 44.8 && step % 4 === 0) playTone(1180, 0.05, 'sine', 0.18);
+        }
+        if (!sfxDone.has('ding') && t >= 12.2 && t < 12.6) {
+          sfxDone.add('ding');
+          playTone(880, 0.35, 'sine', 0.3);
+        }
+        if (!sfxDone.has('chime') && t >= 48.0 && t < 48.5) {
+          sfxDone.add('chime');
+          [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => setTimeout(() => playTone(n, 0.8, 'triangle', 0.25), i * 70));
+        }
+      }
+
+      const clamp01 = (v) => Math.max(0, Math.min(1, v));
+      const lerp = (a, b, t) => a + (b - a) * t;
+      const easeOutBack = (t) => 1 + 2.70158 * Math.pow(t - 1, 3) + 1.70158 * Math.pow(t - 1, 2);
+      const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      function lerpHex(h1, h2, t) {
+        const c1 = parseInt(h1.slice(1), 16), c2 = parseInt(h2.slice(1), 16);
+        const r = Math.round(lerp((c1 >> 16) & 255, (c2 >> 16) & 255, t));
+        const g = Math.round(lerp((c1 >> 8) & 255, (c2 >> 8) & 255, t));
+        const b = Math.round(lerp(c1 & 255, c2 & 255, t));
+        return 'rgb(' + r + ',' + g + ',' + b + ')';
+      }
+
+      const el = (id) => document.getElementById(id);
+
+      function render(t) {
+        const sc = t >= 45 ? SCENES[3] : t >= 25 ? SCENES[2] : t >= 10 ? SCENES[1] : SCENES[0];
+        el('svg-scene-dot').setAttribute('fill', sc.color);
+        el('svg-scene-label').textContent = sc.badge;
+        el('sub-line-1').textContent = sc.line1;
+        el('sub-line-2').textContent = sc.line2;
+
+        const mm = String(Math.floor(t / 60)).padStart(2, '0');
+        const ss = String(Math.floor(t % 60)).padStart(2, '0');
+        el('svg-timecode').textContent = mm + ':' + ss + ' / 01:00';
+
+        // Partikel
+        el('p1').setAttribute('cy', (215 + Math.sin(t * 1.1) * 14).toFixed(1));
+        el('p2').setAttribute('y', (175 + Math.cos(t * 0.9) * 15).toFixed(1));
+        el('p4').setAttribute('cy', (435 + Math.cos(t) * 14).toFixed(1));
+
+        // Transisi Lapisan
+        let deskOp = 1, deskZoom = 1, brainOp = 0;
+        if (t >= 9.2 && t < 10.6) {
+          const p = easeInOut((t - 9.2) / 1.4);
+          deskZoom = lerp(1, 2.3, p);
+          deskOp = lerp(1, 0, clamp01((t - 9.6) / 0.9));
+          brainOp = clamp01((t - 9.8) / 0.8);
+        } else if (t >= 10.6 && t < 44.4) {
+          deskOp = 0; brainOp = 1;
+        } else if (t >= 44.4 && t < 46.0) {
+          const p = easeInOut((t - 44.4) / 1.6);
+          brainOp = lerp(1, 0, clamp01((t - 44.4) / 1.0));
+          deskOp = clamp01((t - 44.8) / 1.0);
+          deskZoom = lerp(2.1, 1, p);
+        }
+        el('layer-desk').setAttribute('opacity', deskOp.toFixed(3));
+        el('layer-desk').setAttribute('transform', 'translate(640,340) scale(' + deskZoom.toFixed(3) + ') translate(-640,-340)');
+        el('layer-brain').setAttribute('opacity', brainOp.toFixed(3));
+
+        // Adegan 1
+        if (t < 11) {
+          el('glow-stop').setAttribute('stop-color', '#FF6B6B');
+          const pIn = Math.max(0, easeOutBack(clamp01((t - 3.0) / 0.85)));
+          const bob = t >= 3 ? Math.sin((t - 3) * 3.2) * 8 : 0;
+          el('giant-phone').setAttribute('transform', 'translate(945,' + (285 + bob).toFixed(1) + ') scale(' + pIn.toFixed(3) + ')');
+          const gaze = easeInOut(clamp01((t - 3.2) / 0.7));
+          el('char-head').setAttribute('transform', 'translate(' + (gaze * 8).toFixed(1) + ',-12) rotate(' + (gaze * 12).toFixed(1) + ')');
+          if (t < 3) {
+            el('clock-min').setAttribute('transform', 'rotate(' + (t * 18).toFixed(1) + ')');
+            el('clock-hr').setAttribute('transform', 'rotate(' + (t * 2).toFixed(1) + ')');
+            el('clock-ring').setAttribute('opacity', '0');
+          } else {
+            const sp = t - 3;
+            el('clock-min').setAttribute('transform', 'rotate(' + (54 + sp * 420).toFixed(1) + ')');
+            el('clock-hr').setAttribute('transform', 'rotate(' + (6 + sp * 55).toFixed(1) + ')');
+            el('clock-ring').setAttribute('opacity', '0.65');
+          }
+          el('mouth-neutral').setAttribute('opacity', '1');
+          el('mouth-smile').setAttribute('opacity', '0');
+          el('doc-stacks').setAttribute('opacity', '1');
+          el('neat-desk-s4').setAttribute('opacity', '0');
+        }
+
+        // Adegan 2 & 3
+        if (t >= 9.5 && t <= 46.5) {
+          const calm = easeInOut(clamp01((t - 26.5) / 7.5));
+          const col = lerpHex('#FF4D4D', '#06D6A0', calm);
+          el('brain-shape').setAttribute('fill', col);
+          el('brain-sub').setAttribute('fill', lerpHex('#DC2626', '#059669', calm));
+          el('brain-wave-1').setAttribute('stroke', col);
+          el('brain-wave-2').setAttribute('stroke', col);
+          el('amygdala-ring').setAttribute('stroke', col);
+          el('glow-stop').setAttribute('stop-color', col);
+
+          const pulse = 1 + Math.sin(t * lerp(7.5, 2.4, calm)) * lerp(0.22, 0.08, calm);
+          el('amygdala-group').setAttribute('transform', 'translate(4,8) scale(' + pulse.toFixed(3) + ')');
+          el('amygdala-alert').setAttribute('opacity', (1 - calm).toFixed(2));
+          el('amygdala-ok').setAttribute('opacity', calm.toFixed(2));
+
+          // Blok Berat
+          if (t < 26.5) {
+            const drop = clamp01((t - 11.4) / 0.8);
+            el('heavy-block').setAttribute('opacity', clamp01((t - 11.2) / 0.3).toFixed(2));
+            el('heavy-block').setAttribute('transform', 'translate(930,' + lerp(-220, 345, drop * drop).toFixed(1) + ') scale(1)');
+            el('laser-cut').setAttribute('opacity', '0');
+          } else if (t < 28.4) {
+            const cut = easeInOut((t - 26.5) / 1.9);
+            el('laser-cut').setAttribute('opacity', Math.sin(clamp01((t - 26.5) / 0.9) * Math.PI).toFixed(2));
+            el('heavy-block').setAttribute('opacity', (1 - cut).toFixed(2));
+          } else {
+            el('heavy-block').setAttribute('opacity', '0');
+            el('laser-cut').setAttribute('opacity', '0');
+          }
+
+          // Gelembung Hiburan
+          [
+            { id: 'bub-game', s: 15.5, x: 610, y: 170 },
+            { id: 'bub-video', s: 17.1, x: 650, y: 340 },
+            { id: 'bub-social', s: 18.7, x: 555, y: 500 }
+          ].forEach((b, idx) => {
+            if (t < b.s || t > 25.5) el(b.id).setAttribute('transform', 'translate(' + b.x + ',' + b.y + ') scale(0)');
+            else {
+              const scB = Math.max(0, easeOutBack(clamp01((t - b.s) / 0.55))) * (t > 24.8 ? 1 - clamp01((t - 24.8) / 0.7) : 1);
+              el(b.id).setAttribute('transform', 'translate(' + b.x + ',' + (b.y + Math.sin(t * 3 + idx) * 8).toFixed(1) + ') scale(' + scB.toFixed(3) + ')');
+            }
+          });
+
+          // Puzzle & Timer 05:00
+          if (t >= 27.4) {
+            const pSc = Math.max(0, easeOutBack(clamp01((t - 27.4) / 0.8)));
+            el('puzzle-group').setAttribute('opacity', clamp01((t - 27.4) / 0.4).toFixed(2));
+            const snap = easeInOut(clamp01((t - 31) / 11));
+            const sx = lerp(92, 74, snap), sy = lerp(42, 28, snap);
+            el('pz-1').setAttribute('transform', 'translate(' + (-sx).toFixed(1) + ',' + (-sy).toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+            el('pz-2').setAttribute('transform', 'translate(0,' + (-sy).toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+            el('pz-3').setAttribute('transform', 'translate(' + sx.toFixed(1) + ',' + (-sy).toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+            el('pz-4').setAttribute('transform', 'translate(' + (-sx).toFixed(1) + ',' + sy.toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+            el('pz-5').setAttribute('transform', 'translate(0,' + sy.toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+            el('pz-6').setAttribute('transform', 'translate(' + sx.toFixed(1) + ',' + sy.toFixed(1) + ') scale(' + pSc.toFixed(2) + ')');
+          } else {
+            el('puzzle-group').setAttribute('opacity', '0');
+          }
+
+          if (t >= 29.0) {
+            const tSc = Math.max(0, easeOutBack(clamp01((t - 29.0) / 0.65)));
+            el('timer-card').setAttribute('transform', 'translate(930,195) scale(' + tSc.toFixed(3) + ')');
+            const rem = Math.max(0, 300 - Math.max(0, Math.floor(t - 30.0)));
+            el('timer-text').textContent = String(Math.floor(rem / 60)).padStart(2, '0') + ':' + String(rem % 60).padStart(2, '0');
+            el('timer-ring').setAttribute('stroke-dashoffset', (213.6 * clamp01((t - 30) / 15) * 0.25).toFixed(1));
+          } else {
+            el('timer-card').setAttribute('transform', 'translate(930,195) scale(0)');
+          }
+        }
+
+        // Adegan 4
+        if (t >= 44.8) {
+          el('glow-stop').setAttribute('stop-color', '#06D6A0');
+          el('giant-phone').setAttribute('transform', 'translate(945,285) scale(0)');
+          el('char-head').setAttribute('transform', 'translate(0,-12) rotate(0)');
+          el('mouth-neutral').setAttribute('opacity', '0');
+          el('mouth-smile').setAttribute('opacity', '1');
+          el('doc-stacks').setAttribute('opacity', '0');
+          el('neat-desk-s4').setAttribute('opacity', '1');
+          el('clock-ring').setAttribute('opacity', '0');
+
+          const cSc = Math.max(0.01, easeOutBack(clamp01((t - 47.5) / 0.85)));
+          el('layer-cta').setAttribute('opacity', clamp01((t - 47.4) / 0.45).toFixed(2));
+          el('cta-card').setAttribute('transform', 'translate(640,148) scale(' + cSc.toFixed(3) + ')');
+        } else {
+          el('layer-cta').setAttribute('opacity', '0');
+        }
+
+        // Kirim pembaruan waktu ke parent HTML2MP4 Studio
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'STUDIO_TIME_UPDATE', time: t, duration: DURATION, isPlaying }, '*');
+        }
+      }
+
+      function loop(ts) {
+        if (!lastTs) lastTs = ts;
+        const dt = (ts - lastTs) / 1000;
+        lastTs = ts;
+        if (isPlaying) {
+          currentTime += Math.min(dt, 0.1);
+          if (currentTime >= DURATION) {
+            currentTime = 0;
+            sfxDone.clear();
+            lastStep = -1;
+          }
+          stepAudio(currentTime);
+          render(currentTime);
+        }
+        requestAnimationFrame(loop);
+      }
+
+      // Dengarkan kontrol dari Parent HTML2MP4 Studio
+      window.addEventListener('message', (e) => {
+        const msg = e.data || {};
+        if (msg.type === 'STUDIO_CMD') {
+          if (msg.cmd === 'PLAY') { isPlaying = true; lastTs = performance.now(); ensureAudio(); }
+          else if (msg.cmd === 'PAUSE') { isPlaying = false; }
+          else if (msg.cmd === 'RESTART') {
+            currentTime = 0; sfxDone.clear(); lastStep = -1; isPlaying = true; lastTs = performance.now();
+            ensureAudio(); render(0);
+          }
+          else if (msg.cmd === 'SET_MUTE') {
+            isMuted = !!msg.muted;
+            if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(isMuted ? 0 : 0.35, audioCtx.currentTime, 0.03);
+          }
+        }
+      });
+
+      render(0);
+      requestAnimationFrame(loop);
+    })();
+  <\/script>
+</body>
+</html>`;
+
+      // =========================================================================
+      // 2. INJEKSI CAPTURE BRIDGE KE DALAM IFRAME (AUDIO TAP + DOM/SVG/CANVAS)
+      // =========================================================================
+      function buildInjectedHtml(rawHtml) {
+        const bridgeScript = `
+<script>
+(function() {
+  // Penyadapan Web Audio API otomatis agar stream audio bisa direkam ke MP4
+  window.__studioAudioDest = null;
+  window.__studioMasterGain = null;
+  window.__studioMuted = false;
+
+  const OrigAudioContext = window.AudioContext || window.webkitAudioContext;
+  if (OrigAudioContext) {
+    window.AudioContext = window.webkitAudioContext = function(...args) {
+      const ctx = new OrigAudioContext(...args);
+      try {
+        const dest = ctx.createMediaStreamDestination();
+        const monitorGain = ctx.createGain();
+        monitorGain.gain.value = window.__studioMuted ? 0 : 1;
+        monitorGain.connect(ctx.destination);
+
+        const origConnect = AudioNode.prototype.connect;
+        AudioNode.prototype.connect = function(target, ...rest) {
+          if (target === ctx.destination) {
+            origConnect.call(this, monitorGain, ...rest);
+            return origConnect.call(this, dest, ...rest);
+          }
+          return origConnect.call(this, target, ...rest);
+        };
+
+        window.__studioAudioCtx = ctx;
+        window.__studioAudioDest = dest;
+        window.__studioMonitorGain = monitorGain;
+      } catch (err) {}
+      return ctx;
+    };
+  }
+
+  window.addEventListener('message', function(ev) {
+    if (ev.data && ev.data.type === 'STUDIO_CMD' && ev.data.cmd === 'SET_MUTE') {
+      window.__studioMuted = !!ev.data.muted;
+      if (window.__studioMonitorGain && window.__studioAudioCtx) {
+        window.__studioMonitorGain.gain.setTargetAtTime(window.__studioMuted ? 0 : 1, window.__studioAudioCtx.currentTime, 0.02);
+      }
+    }
+  });
+})();
+<\/script>`;
+
+        if (/<head[^>]*>/i.test(rawHtml)) {
+          return rawHtml.replace(/<head[^>]*>/i, (match) => match + '\n' + bridgeScript);
+        }
+        return bridgeScript + '\n' + rawHtml;
+      }
+
+      // =========================================================================
+      // 3. STATE & REFERENSI ELEMEN STUDIO
+      // =========================================================================
+      let currentHtmlCode = DEFAULT_ANIMATION_HTML;
+      let isStagePlaying = true;
+      let isStageMuted = false;
+      let stageCurrentTime = 0;
+      let stageTotalDuration = 60;
+
+      // State Render MP4
+      let isRendering = false;
+      let cancelRequested = false;
+      let stopAndSaveRequested = false;
+      let generatedMp4Url = null;
+      let generatedMp4Filename = 'animasi-html2mp4.mp4';
+
+      // Elemen UI
+      const encoderCapabilityBadge = document.getElementById('encoder-capability-badge');
+      const headerFileInput = document.getElementById('header-file-input');
+      const btnHeaderUpload = document.getElementById('btn-header-upload');
+
+      const activeProjectTitle = document.getElementById('active-project-title');
+      const stageAspectBadge = document.getElementById('stage-aspect-badge');
+      const stageRecBadge = document.getElementById('stage-rec-badge');
+      const stageRecText = document.getElementById('stage-rec-text');
+      const iframeAspectWrapper = document.getElementById('iframe-aspect-wrapper');
+      const previewIframe = document.getElementById('preview-iframe');
+
+      const btnStagePlay = document.getElementById('btn-stage-play');
+      const stageIconPlay = document.getElementById('stage-icon-play');
+      const stageIconPause = document.getElementById('stage-icon-pause');
+      const stageLabelPlay = document.getElementById('stage-label-play');
+      const btnStageRestart = document.getElementById('btn-stage-restart');
+      const stageTimecodeNow = document.getElementById('stage-timecode-now');
+      const stageTimecodeTotal = document.getElementById('stage-timecode-total');
+      const btnStageMute = document.getElementById('btn-stage-mute');
+      const stageSoundOn = document.getElementById('stage-sound-on');
+      const stageSoundOff = document.getElementById('stage-sound-off');
+      const stageLabelMute = document.getElementById('stage-label-mute');
+
+      // Tabs
+      const tabBtnRender = document.getElementById('tab-btn-render');
+      const tabBtnEditor = document.getElementById('tab-btn-editor');
+      const tabBtnResult = document.getElementById('tab-btn-result');
+      const resultReadyDot = document.getElementById('result-ready-dot');
+      const tabPanelRender = document.getElementById('tab-panel-render');
+      const tabPanelEditor = document.getElementById('tab-panel-editor');
+      const tabPanelResult = document.getElementById('tab-panel-result');
+
+      // Pengaturan Render
+      const selectResolution = document.getElementById('select-resolution');
+      const selectFps = document.getElementById('select-fps');
+      const inputDuration = document.getElementById('input-duration');
+      const durPresetBtns = document.querySelectorAll('.dur-preset-btn');
+      const selectCaptureMode = document.getElementById('select-capture-mode');
+      const toggleIncludeAudio = document.getElementById('toggle-include-audio');
+      const btnStartRender = document.getElementById('btn-start-render');
+      const activeRenderActions = document.getElementById('active-render-actions');
+      const btnStopSaveRender = document.getElementById('btn-stop-save-render');
+      const btnCancelRender = document.getElementById('btn-cancel-render');
+      const renderProgressPanel = document.getElementById('render-progress-panel');
+      const renderStatusText = document.getElementById('render-status-text');
+      const renderPercentText = document.getElementById('render-percent-text');
+      const renderProgressBar = document.getElementById('render-progress-bar');
+      const renderFrameCount = document.getElementById('render-frame-count');
+      const renderElapsedTime = document.getElementById('render-elapsed-time');
+
+      // Editor HTML
+      const editorDropzone = document.getElementById('editor-dropzone');
+      const editorFileInput = document.getElementById('editor-file-input');
+      const htmlCodeTextarea = document.getElementById('html-code-textarea');
+      const codeCharCount = document.getElementById('code-char-count');
+      const btnResetDefault = document.getElementById('btn-reset-default');
+      const btnApplyHtml = document.getElementById('btn-apply-html');
+
+      // Hasil Video MP4
+      const resultEmptyState = document.getElementById('result-empty-state');
+      const resultReadyState = document.getElementById('result-ready-state');
+      const btnGotoRenderTab = document.getElementById('btn-goto-render-tab');
+      const outputVideoPlayer = document.getElementById('output-video-player');
+      const metaFileSize = document.getElementById('meta-file-size');
+      const metaResFps = document.getElementById('meta-res-fps');
+      const metaDuration = document.getElementById('meta-duration');
+      const metaCodec = document.getElementById('meta-codec');
+      const btnDownloadMp4 = document.getElementById('btn-download-mp4');
+
+      // =========================================================================
+      // 4. UTILITAS UI, TAB, TOAST, & KONTROL IFRAME
+      // =========================================================================
+      function showToast(message, isError = false) {
+        const toast = document.getElementById('studio-toast');
+        const dot = document.getElementById('studio-toast-dot');
+        const msg = document.getElementById('studio-toast-msg');
+        msg.textContent = message;
+        dot.style.backgroundColor = isError ? '#FF6B6B' : '#06D6A0';
+        toast.classList.remove('translate-y-24', 'opacity-0');
+        clearTimeout(toast._t);
+        toast._t = setTimeout(() => {
+          toast.classList.add('translate-y-24', 'opacity-0');
+        }, 3400);
+      }
+
+      function formatSeconds(sec) {
+        const s = Math.max(0, Math.floor(sec));
+        return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+      }
+
+      function switchTab(tabName) {
+        const map = {
+          render: { btn: tabBtnRender, panel: tabPanelRender },
+          editor: { btn: tabBtnEditor, panel: tabPanelEditor },
+          result: { btn: tabBtnResult, panel: tabPanelResult }
+        };
+        Object.entries(map).forEach(([key, obj]) => {
+          if (key === tabName) {
+            obj.panel.classList.remove('hidden');
+            obj.btn.classList.add('bg-slate-800', 'text-white', 'shadow', 'font-bold');
+            obj.btn.classList.remove('text-slate-400', 'font-semibold');
+            obj.btn.setAttribute('aria-selected', 'true');
+          } else {
+            obj.panel.classList.add('hidden');
+            obj.btn.classList.remove('bg-slate-800', 'text-white', 'shadow', 'font-bold');
+            obj.btn.classList.add('text-slate-400', 'font-semibold');
+            obj.btn.setAttribute('aria-selected', 'false');
+          }
+        });
+      }
+
+      tabBtnRender.addEventListener('click', () => switchTab('render'));
+      tabBtnEditor.addEventListener('click', () => switchTab('editor'));
+      tabBtnResult.addEventListener('click', () => switchTab('result'));
+      btnGotoRenderTab.addEventListener('click', () => switchTab('render'));
+
+      function updateCharCount() {
+        codeCharCount.textContent = `${htmlCodeTextarea.value.length.toLocaleString('id-ID')} karakter`;
+      }
+
+      function loadHtmlIntoStage(htmlStr, titleLabel = 'Animasi Kustom HTML') {
+        currentHtmlCode = htmlStr;
+        activeProjectTitle.textContent = titleLabel;
+        previewIframe.srcdoc = buildInjectedHtml(htmlStr);
+        isStagePlaying = true;
+        stageIconPlay.classList.add('hidden');
+        stageIconPause.classList.remove('hidden');
+        stageLabelPlay.textContent = 'Jeda';
+        stageCurrentTime = 0;
+        stageTimecodeNow.textContent = '00:00';
+      }
+
+      // Perbarui rasio aspek preview stage saat resolusi berubah
+      function updateStageAspectRatio() {
+        const res = selectResolution.value;
+        if (res === '1080x1920') {
+          iframeAspectWrapper.classList.remove('stage-frame-16-9');
+          iframeAspectWrapper.classList.add('stage-frame-9-16');
+          stageAspectBadge.textContent = '9:16 • 1080×1920';
+        } else {
+          iframeAspectWrapper.classList.remove('stage-frame-9-16');
+          iframeAspectWrapper.classList.add('stage-frame-16-9');
+          stageAspectBadge.textContent = res === '1920x1080' ? '16:9 • 1920×1080' : '16:9 • 1280×720';
+        }
+      }
+      selectResolution.addEventListener('change', updateStageAspectRatio);
+
+      // Sinkronisasi Durasi Input & Preset
+      durPresetBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const d = parseInt(btn.getAttribute('data-dur'), 10) || 60;
+          inputDuration.value = d;
+          stageTimecodeTotal.textContent = formatSeconds(d);
+          durPresetBtns.forEach((b) => {
+            b.classList.remove('bg-teal-500/20', 'text-teal-300', 'border-teal-400/40', 'font-bold');
+            b.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+          });
+          btn.classList.add('bg-teal-500/20', 'text-teal-300', 'border-teal-400/40', 'font-bold');
+          btn.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
+        });
+      });
+
+      inputDuration.addEventListener('input', () => {
+        const val = Math.max(5, Math.min(300, parseInt(inputDuration.value, 10) || 60));
+        stageTimecodeTotal.textContent = formatSeconds(val);
+      });
+
+      // Kontrol Play/Pause, Restart, Mute pada Stage
+      function sendIframeCmd(cmd, payload = {}) {
+        if (previewIframe && previewIframe.contentWindow) {
+          previewIframe.contentWindow.postMessage({ type: 'STUDIO_CMD', cmd, ...payload }, '*');
+        }
+      }
+
+      btnStagePlay.addEventListener('click', () => {
+        isStagePlaying = !isStagePlaying;
+        if (isStagePlaying) {
+          sendIframeCmd('PLAY');
+          stageIconPlay.classList.add('hidden');
+          stageIconPause.classList.remove('hidden');
+          stageLabelPlay.textContent = 'Jeda';
+        } else {
+          sendIframeCmd('PAUSE');
+          stageIconPlay.classList.remove('hidden');
+          stageIconPause.classList.add('hidden');
+          stageLabelPlay.textContent = 'Putar';
+        }
+      });
+
+      btnStageRestart.addEventListener('click', () => {
+        sendIframeCmd('RESTART');
+        isStagePlaying = true;
+        stageIconPlay.classList.add('hidden');
+        stageIconPause.classList.remove('hidden');
+        stageLabelPlay.textContent = 'Jeda';
+      });
+
+      btnStageMute.addEventListener('click', () => {
+        isStageMuted = !isStageMuted;
+        sendIframeCmd('SET_MUTE', { muted: isStageMuted });
+        if (isStageMuted) {
+          stageSoundOn.classList.add('hidden');
+          stageSoundOff.classList.remove('hidden');
+          stageLabelMute.textContent = 'Dibisukan';
+        } else {
+          stageSoundOn.classList.remove('hidden');
+          stageSoundOff.classList.add('hidden');
+          stageLabelMute.textContent = 'Audio Aktif';
+        }
+      });
+
+      // Terima pesan waktu dari animasi default di dalam iframe
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'STUDIO_TIME_UPDATE') {
+          stageCurrentTime = e.data.time || 0;
+          stageTimecodeNow.textContent = formatSeconds(stageCurrentTime);
+        }
+      });
+
+      // =========================================================================
+      // 5. UNGGAH FILE .HTML & EDITOR KODE
+      // =========================================================================
+      function handleUploadedHtmlFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const content = String(ev.target.result || '');
+          htmlCodeTextarea.value = content;
+          updateCharCount();
+          loadHtmlIntoStage(content, `File: ${file.name}`);
+          generatedMp4Filename = file.name.replace(/\.html?$/i, '') + '.mp4';
+          showToast(`Berhasil memuat "${file.name}" ke Stage`);
+        };
+        reader.readAsText(file);
+      }
+
+      btnHeaderUpload.addEventListener('click', () => headerFileInput.click());
+      headerFileInput.addEventListener('change', (e) => handleUploadedHtmlFile(e.target.files[0]));
+
+      editorDropzone.addEventListener('click', () => editorFileInput.click());
+      editorFileInput.addEventListener('change', (e) => handleUploadedHtmlFile(e.target.files[0]));
+
+      editorDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        editorDropzone.classList.add('dropzone-active');
+      });
+      editorDropzone.addEventListener('dragleave', () => {
+        editorDropzone.classList.remove('dropzone-active');
+      });
+      editorDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        editorDropzone.classList.remove('dropzone-active');
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        handleUploadedHtmlFile(file);
+      });
+
+      htmlCodeTextarea.addEventListener('input', updateCharCount);
+
+      btnResetDefault.addEventListener('click', () => {
+        htmlCodeTextarea.value = DEFAULT_ANIMATION_HTML;
+        updateCharCount();
+        inputDuration.value = 60;
+        stageTimecodeTotal.textContent = '01:00';
+        generatedMp4Filename = 'mengapa-kita-suka-menunda-pekerjaan.mp4';
+        loadHtmlIntoStage(DEFAULT_ANIMATION_HTML, 'Default: Mengapa Kita Suka Menunda Pekerjaan? (60d)');
+        showToast('Direset ke animasi edukasi default 60 detik');
+      });
+
+      btnApplyHtml.addEventListener('click', () => {
+        const code = htmlCodeTextarea.value.trim();
+        if (!code) {
+          showToast('Kode HTML masih kosong!', true);
+          return;
+        }
+        // Ekstrak <title> jika ada untuk nama file output
+        const titleMatch = code.match(/<title[^>]*>([^<]+)<\/title>/i);
+        const extractedTitle = titleMatch ? titleMatch[1].trim() : 'Animasi HTML Kustom';
+        generatedMp4Filename =
+          extractedTitle
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'animasi-html2mp4';
+        generatedMp4Filename += '.mp4';
+
+        loadHtmlIntoStage(code, extractedTitle);
+        showToast('Kode HTML diterapkan ke Preview Stage');
+      });
+
+      // =========================================================================
+      // 6. RASTERISASI FRAME IFRAME KE OFFSCREEN CANVAS (ANTI-TAINTING)
+      // =========================================================================
+      async function rasterizeIframeToCanvas(iframeEl, targetCtx, targetW, targetH) {
+        const doc = iframeEl.contentDocument;
+        if (!doc) return;
+
+        // Bersihkan latar kanvas dengan warna gelap studio
+        targetCtx.fillStyle = '#090E1A';
+        targetCtx.fillRect(0, 0, targetW, targetH);
+
+        // Prioritas 1: Jika ada elemen <canvas> utama (Three.js, p5.js, Game 2D)
+        const canvases = Array.from(doc.querySelectorAll('canvas'));
+        const mainCanvas = canvases.find((c) => c.width > 50 && c.height > 50);
+        if (mainCanvas) {
+          const scale = Math.min(targetW / mainCanvas.width, targetH / mainCanvas.height);
+          const drawW = mainCanvas.width * scale;
+          const drawH = mainCanvas.height * scale;
+          const dx = (targetW - drawW) / 2;
+          const dy = (targetH - drawH) / 2;
+          try {
+            targetCtx.drawImage(mainCanvas, dx, dy, drawW, drawH);
+            return;
+          } catch (err) {
+            // Lanjut ke SVG/DOM jika canvas WebGL tanpa preserveDrawingBuffer
+          }
+        }
+
+        // Prioritas 2: Jika ada elemen <svg> utama (Motion Graphic Vektor SVG)
+        const svgs = Array.from(doc.querySelectorAll('svg'));
+        const mainSvg = svgs.find((s) => {
+          const rect = s.getBoundingClientRect();
+          return rect.width >= 100 && rect.height >= 100;
+        });
+
+        if (mainSvg) {
+          const cloned = mainSvg.cloneNode(true);
+          cloned.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+          cloned.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+
+          const vb = mainSvg.viewBox && mainSvg.viewBox.baseVal;
+          const srcW = vb && vb.width ? vb.width : mainSvg.clientWidth || 1280;
+          const srcH = vb && vb.height ? vb.height : mainSvg.clientHeight || 720;
+
+          cloned.setAttribute('width', String(srcW));
+          cloned.setAttribute('height', String(srcH));
+
+          const xml = new XMLSerializer().serializeToString(cloned);
+          const svgDataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(xml);
+
+          await new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              const scale = Math.min(targetW / srcW, targetH / srcH);
+              const drawW = srcW * scale;
+              const drawH = srcH * scale;
+              const dx = (targetW - drawW) / 2;
+              const dy = (targetH - drawH) / 2;
+              targetCtx.drawImage(img, dx, dy, drawW, drawH);
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = svgDataUrl;
+          });
+          return;
+        }
+
+        // Prioritas 3: Fallback HTML/CSS DOM via SVG foreignObject
+        const bodyClone = doc.body.cloneNode(true);
+        bodyClone.querySelectorAll('script').forEach((s) => s.remove());
+        const styleText = Array.from(doc.querySelectorAll('style'))
+          .map((st) => st.textContent)
+          .join('\n');
+
+        const w = iframeEl.clientWidth || 1280;
+        const h = iframeEl.clientHeight || 720;
+        const xhtml = new XMLSerializer().serializeToString(bodyClone);
+        const foSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+          <foreignObject width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px;overflow:hidden;">
+              <style>${styleText}</style>
+              ${xhtml}
+            </div>
+          </foreignObject>
+        </svg>`;
+        const foUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(foSvg);
+
+        await new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(targetW / w, targetH / h);
+            const dw = w * scale;
+            const dh = h * scale;
+            targetCtx.drawImage(img, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
+            resolve();
+          };
+          img.onerror = () => resolve();
+          img.src = foUrl;
+        });
+      }
+
+      // =========================================================================
+      // 7. MESIN UTAMA ENCODING MP4 (WEBCODECS + MP4-MUXER & FALLBACK)
+      // =========================================================================
+      async function checkWebCodecsSupport() {
+        if (typeof VideoEncoder !== 'undefined' && typeof Mp4Muxer !== 'undefined') {
+          try {
+            const support = await VideoEncoder.isConfigSupported({
+              codec: 'avc1.42001f',
+              width: 1280,
+              height: 720,
+              bitrate: 5_000_000,
+              framerate: 30
+            });
+            if (support && support.supported) {
+              encoderCapabilityBadge.textContent = 'WebCodecs H.264 Ready';
+              return true;
+            }
+          } catch (e) {}
+        }
+        encoderCapabilityBadge.textContent = 'MediaRecorder Mode';
+        encoderCapabilityBadge.classList.replace('text-teal-300', 'text-amber-300');
+        return false;
+      }
+
+      function finalizeAndShowMp4Result(mp4Buffer, width, height, fps, durationSec, codecLabel) {
+        if (generatedMp4Url) {
+          URL.revokeObjectURL(generatedMp4Url);
+        }
+        const blob = new Blob([mp4Buffer], { type: 'video/mp4' });
+        generatedMp4Url = URL.createObjectURL(blob);
+
+        outputVideoPlayer.src = generatedMp4Url;
+        const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
+        metaFileSize.textContent = `${sizeMb} MB`;
+        metaResFps.textContent = `${width}×${height} @ ${fps} FPS`;
+        metaDuration.textContent = `${durationSec.toFixed(1)} detik`;
+        metaCodec.textContent = codecLabel;
+
+        resultEmptyState.classList.add('hidden');
+        resultReadyState.classList.remove('hidden');
+        resultReadyDot.classList.remove('hidden');
+
+        switchTab('result');
+        showToast(`Render selesai! File MP4 (${sizeMb} MB) siap diunduh.`);
+      }
+
+      function setRenderingUiState(active) {
+        isRendering = active;
+        if (active) {
+          btnStartRender.classList.add('hidden');
+          activeRenderActions.classList.remove('hidden');
+          renderProgressPanel.classList.remove('hidden');
+          stageRecBadge.classList.remove('hidden');
+        } else {
+          btnStartRender.classList.remove('hidden');
+          activeRenderActions.classList.add('hidden');
+          stageRecBadge.classList.add('hidden');
+        }
+      }
+
+      async function startMp4Rendering() {
+        if (isRendering) return;
+
+        const [targetW, targetH] = selectResolution.value.split('x').map(Number);
+        const fps = parseInt(selectFps.value, 10) || 30;
+        const targetDuration = Math.max(5, Math.min(300, parseInt(inputDuration.value, 10) || 60));
+        const captureMode = selectCaptureMode.value;
+        const includeAudio = toggleIncludeAudio.checked;
+        const totalFrames = targetDuration * fps;
+
+        cancelRequested = false;
+        stopAndSaveRequested = false;
+        setRenderingUiState(true);
+
+        renderStatusText.textContent = 'Memulai ulang animasi dari 00:00...';
+        renderPercentText.textContent = '0%';
+        renderProgressBar.style.width = '0%';
+        renderFrameCount.textContent = `0 / ${totalFrames}`;
+        renderElapsedTime.textContent = `00:00 / ${formatSeconds(targetDuration)}`;
+
+        // Offscreen Canvas target resolusi penuh
+        const offscreenCanvas = document.createElement('canvas');
+        offscreenCanvas.width = targetW;
+        offscreenCanvas.height = targetH;
+        const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
+
+        // Siapkan sumber video jika Mode Tangkap Layar (getDisplayMedia) dipilih
+        let displayStream = null;
+        let displayVideoEl = null;
+        if (captureMode === 'display') {
+          try {
+            renderStatusText.textContent = 'Meminta izin tangkap layar stage...';
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: { frameRate: fps },
+              audio: includeAudio
+            });
+            displayVideoEl = document.createElement('video');
+            displayVideoEl.srcObject = displayStream;
+            displayVideoEl.muted = true;
+            await displayVideoEl.play();
+          } catch (err) {
+            setRenderingUiState(false);
+            renderProgressPanel.classList.add('hidden');
+            showToast('Izin tangkap layar dibatalkan oleh pengguna.', true);
+            return;
+          }
+        }
+
+        // Restart animasi dari 00:00 agar frame awal selalu presisi
+        sendIframeCmd('RESTART');
+        isStagePlaying = true;
+        stageIconPlay.classList.add('hidden');
+        stageIconPause.classList.remove('hidden');
+        stageLabelPlay.textContent = 'Jeda';
+
+        // Beri jeda 180ms agar frame 00:00 ter-render sempurna
+        await new Promise((r) => setTimeout(r, 180));
+
+        // Cek dukungan WebCodecs + Mp4Muxer
+        const canUseWebCodecs = await checkWebCodecsSupport();
+
+        if (canUseWebCodecs) {
+          try {
+            // Pilih profil H.264 yang didukung GPU/CPU pengguna
+            const candidateCodecs = targetW >= 1920 || fps >= 60
+              ? ['avc1.4D002A', 'avc1.640028', 'avc1.420028', 'avc1.42001f']
+              : ['avc1.42001f', 'avc1.4D001F', 'avc1.4D002A'];
+
+            let chosenCodec = 'avc1.42001f';
+            for (const c of candidateCodecs) {
+              const sup = await VideoEncoder.isConfigSupported({
+                codec: c,
+                width: targetW,
+                height: targetH,
+                bitrate: targetW >= 1920 ? 8_000_000 : 5_000_000,
+                framerate: fps
+              });
+              if (sup && sup.supported) {
+                chosenCodec = c;
+                break;
+              }
+            }
+
+            // Cek apakah Audio Track tersedia & AudioEncoder AAC didukung
+            let audioTrack = null;
+            let useAudioEncoder = false;
+            let audioSampleRate = 48000;
+            let audioChannels = 2;
+
+            if (includeAudio) {
+              if (displayStream && displayStream.getAudioTracks().length > 0) {
+                audioTrack = displayStream.getAudioTracks()[0];
+              } else if (
+                previewIframe.contentWindow &&
+                previewIframe.contentWindow.__studioAudioDest &&
+                previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks().length > 0
+              ) {
+                audioTrack = previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks()[0];
+                if (previewIframe.contentWindow.__studioAudioCtx) {
+                  audioSampleRate = previewIframe.contentWindow.__studioAudioCtx.sampleRate || 48000;
+                }
+              }
+
+              if (audioTrack && typeof AudioEncoder !== 'undefined' && typeof MediaStreamTrackProcessor !== 'undefined') {
+                try {
+                  const aSup = await AudioEncoder.isConfigSupported({
+                    codec: 'mp4a.40.2',
+                    sampleRate: audioSampleRate,
+                    numberOfChannels: audioChannels,
+                    bitrate: 128_000
+                  });
+                  if (aSup && aSup.supported) {
+                    useAudioEncoder = true;
+                  }
+                } catch (e) {}
+              }
+            }
+
+            // Inisialisasi Mp4Muxer
+            const muxer = new Mp4Muxer.Muxer({
+              target: new Mp4Muxer.ArrayBufferTarget(),
+              video: {
+                codec: 'avc',
+                width: targetW,
+                height: targetH
+              },
+              audio: useAudioEncoder
+                ? {
+                    codec: 'aac',
+                    numberOfChannels: audioChannels,
+                    sampleRate: audioSampleRate
+                  }
+                : undefined,
+              fastStart: 'in-memory'
+            });
+
+            let encoderError = null;
+            const videoEncoder = new VideoEncoder({
+              output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+              error: (err) => {
+                encoderError = err;
+              }
+            });
+
+            videoEncoder.configure({
+              codec: chosenCodec,
+              width: targetW,
+              height: targetH,
+              bitrate: targetW >= 1920 ? 8_000_000 : 5_000_000,
+              framerate: fps,
+              hardwareAcceleration: 'no-preference'
+            });
+
+            // Jika AudioEncoder AAC aktif, baca AudioData dari MediaStreamTrackProcessor
+            let audioEncoder = null;
+            let audioReader = null;
+            let audioLoopActive = false;
+
+            if (useAudioEncoder && audioTrack) {
+              audioEncoder = new AudioEncoder({
+                output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+                error: () => {}
+              });
+              audioEncoder.configure({
+                codec: 'mp4a.40.2',
+                sampleRate: audioSampleRate,
+                numberOfChannels: audioChannels,
+                bitrate: 128_000
+              });
+
+              const processor = new MediaStreamTrackProcessor({ track: audioTrack });
+              audioReader = processor.readable.getReader();
+              audioLoopActive = true;
+              let baseAudioTs = null;
+
+              (async () => {
+                while (audioLoopActive) {
+                  const { value: audioData, done } = await audioReader.read();
+                  if (done || !audioData) break;
+                  if (baseAudioTs === null) baseAudioTs = audioData.timestamp;
+                  if (audioEncoder && audioEncoder.state === 'configured' && audioLoopActive) {
+                    try {
+                      audioEncoder.encode(audioData);
+                    } catch (e) {}
+                  }
+                  audioData.close();
+                }
+              })();
+            }
+
+            // Loop Penangkapan Frame Real-Time Presisi
+            const frameIntervalMs = 1000 / fps;
+            const frameDurationUs = Math.round(1_000_000 / fps);
+            const renderStartPerf = performance.now();
+            let frameIndex = 0;
+
+            renderStatusText.textContent = useAudioEncoder
+              ? 'Merender Video H.264 + Audio AAC...'
+              : 'Merender Video H.264 MP4...';
+
+            while (frameIndex < totalFrames && !cancelRequested && !stopAndSaveRequested && !encoderError) {
+              const targetFrameTimePerf = renderStartPerf + frameIndex * frameIntervalMs;
+              const waitMs = targetFrameTimePerf - performance.now();
+              if (waitMs > 1) {
+                await new Promise((r) => setTimeout(r, waitMs));
+              }
+
+              // Gambar frame ke Offscreen Canvas
+              if (captureMode === 'display' && displayVideoEl) {
+                offscreenCtx.fillStyle = '#090E1A';
+                offscreenCtx.fillRect(0, 0, targetW, targetH);
+                const vw = displayVideoEl.videoWidth || targetW;
+                const vh = displayVideoEl.videoHeight || targetH;
+                const sc = Math.min(targetW / vw, targetH / vh);
+                const dw = vw * sc;
+                const dh = vh * sc;
+                offscreenCtx.drawImage(displayVideoEl, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
+              } else {
+                await rasterizeIframeToCanvas(previewIframe, offscreenCtx, targetW, targetH);
+              }
+
+              // Cegah antrean encoder meluap jika mesin lambat
+              while (videoEncoder.encodeQueueSize > 8 && !cancelRequested) {
+                await new Promise((r) => setTimeout(r, 8));
+              }
+
+              const timestampUs = frameIndex * frameDurationUs;
+              const videoFrame = new VideoFrame(offscreenCanvas, {
+                timestamp: timestampUs,
+                duration: frameDurationUs
+              });
+
+              videoEncoder.encode(videoFrame, { keyFrame: frameIndex % (fps * 2) === 0 });
+              videoFrame.close();
+
+              frameIndex++;
+
+              // Perbarui UI Progres setiap 3 frame
+              if (frameIndex % 3 === 0 || frameIndex === totalFrames) {
+                const pct = Math.min(100, Math.round((frameIndex / totalFrames) * 100));
+                const elapsedSec = frameIndex / fps;
+                renderPercentText.textContent = `${pct}%`;
+                renderProgressBar.style.width = `${pct}%`;
+                renderFrameCount.textContent = `${frameIndex} / ${totalFrames}`;
+                renderElapsedTime.textContent = `${formatSeconds(elapsedSec)} / ${formatSeconds(targetDuration)}`;
+                stageRecText.textContent = `MERENDER MP4 • ${pct}%`;
+              }
+            }
+
+            // Hentikan audio loop & bersihkan stream display jika ada
+            audioLoopActive = false;
+            if (audioReader) {
+              try { await audioReader.cancel(); } catch (e) {}
+            }
+            if (displayStream) {
+              displayStream.getTracks().forEach((t) => t.stop());
+            }
+
+            if (cancelRequested) {
+              try { videoEncoder.close(); } catch (e) {}
+              if (audioEncoder) try { audioEncoder.close(); } catch (e) {}
+              setRenderingUiState(false);
+              renderStatusText.textContent = 'Render dibatalkan.';
+              showToast('Proses render MP4 dibatalkan.', true);
+              return;
+            }
+
+            renderStatusText.textContent = 'Menyelesaikan pengemasan file .MP4...';
+            await videoEncoder.flush();
+            videoEncoder.close();
+
+            if (audioEncoder) {
+              await audioEncoder.flush();
+              audioEncoder.close();
+            }
+
+            muxer.finalize();
+            const actualDuration = frameIndex / fps;
+            const codecDesc = useAudioEncoder ? 'MP4 (H.264 + AAC)' : 'MP4 (H.264 AVC)';
+            setRenderingUiState(false);
+            renderStatusText.textContent = 'Render MP4 selesai!';
+
+            finalizeAndShowMp4Result(muxer.target.buffer, targetW, targetH, fps, actualDuration, codecDesc);
+            return;
+          } catch (err) {
+            console.warn('WebCodecs error, beralih ke MediaRecorder fallback:', err);
+          }
+        }
+
+        // =====================================================================
+        // FALLBACK OTOMATIS: MEDIARECORDER (JIKA WEBCODECS TIDAK TERSEDIA)
+        // =====================================================================
+        renderStatusText.textContent = 'Merender via MediaRecorder...';
+        const stream = offscreenCanvas.captureStream(fps);
+        if (
+          includeAudio &&
+          previewIframe.contentWindow &&
+          previewIframe.contentWindow.__studioAudioDest
+        ) {
+          const aTracks = previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks();
+          if (aTracks.length > 0) stream.addTrack(aTracks[0]);
+        }
+
+        const mimeCandidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+        const chosenMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
+        const recorder = new MediaRecorder(stream, chosenMime ? { mimeType: chosenMime, videoBitsPerSecond: 6_000_000 } : undefined);
+        const chunks = [];
+        recorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+        };
+
+        const stoppedPromise = new Promise((resolve) => {
+          recorder.onstop = resolve;
+        });
+
+        recorder.start(250);
+        const startPerf = performance.now();
+        let fIdx = 0;
+
+        while (fIdx < totalFrames && !cancelRequested && !stopAndSaveRequested) {
+          const targetPerf = startPerf + fIdx * (1000 / fps);
+          const wait = targetPerf - performance.now();
+          if (wait > 1) await new Promise((r) => setTimeout(r, wait));
+
+          await rasterizeIframeToCanvas(previewIframe, offscreenCtx, targetW, targetH);
+          fIdx++;
+
+          if (fIdx % 3 === 0 || fIdx === totalFrames) {
+            const pct = Math.min(100, Math.round((fIdx / totalFrames) * 100));
+            renderPercentText.textContent = `${pct}%`;
+            renderProgressBar.style.width = `${pct}%`;
+            renderFrameCount.textContent = `${fIdx} / ${totalFrames}`;
+            renderElapsedTime.textContent = `${formatSeconds(fIdx / fps)} / ${formatSeconds(targetDuration)}`;
+            stageRecText.textContent = `MERENDER • ${pct}%`;
+          }
+        }
+
+        recorder.stop();
+        await stoppedPromise;
+        if (displayStream) displayStream.getTracks().forEach((t) => t.stop());
+
+        if (cancelRequested) {
+          setRenderingUiState(false);
+          showToast('Proses render dibatalkan.', true);
+          return;
+        }
+
+        const finalBlob = new Blob(chunks, { type: chosenMime || 'video/mp4' });
+        const arrayBuf = await finalBlob.arrayBuffer();
+        setRenderingUiState(false);
+        finalizeAndShowMp4Result(arrayBuf, targetW, targetH, fps, fIdx / fps, chosenMime || 'MP4 Video');
+      }
+
+      // Tombol Kontrol Render
+      btnStartRender.addEventListener('click', startMp4Rendering);
+      btnStopSaveRender.addEventListener('click', () => {
+        stopAndSaveRequested = true;
+        renderStatusText.textContent = 'Menghentikan & menyimpan video...';
+      });
+      btnCancelRender.addEventListener('click', () => {
+        cancelRequested = true;
+        renderStatusText.textContent = 'Membatalkan render...';
+      });
+
+      // Tombol Unduh File .MP4
+      btnDownloadMp4.addEventListener('click', () => {
+        if (!generatedMp4Url) {
+          showToast('Belum ada file MP4 yang siap diunduh.', true);
+          return;
+        }
+        const a = document.createElement('a');
+        a.href = generatedMp4Url;
+        a.download = generatedMp4Filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast(`Mengunduh "${generatedMp4Filename}"...`);
+      });
+
+      // =========================================================================
+      // 8. INISIALISASI AWAL STUDIO
+      // =========================================================================
+      htmlCodeTextarea.value = DEFAULT_ANIMATION_HTML;
+      updateCharCount();
+      generatedMp4Filename = 'mengapa-kita-suka-menunda-pekerjaan.mp4';
+      loadHtmlIntoStage(DEFAULT_ANIMATION_HTML, 'Default: Mengapa Kita Suka Menunda Pekerjaan? (60d)');
+      checkWebCodecsSupport();
+    })();
+  </script>
+</body>
+</html>
