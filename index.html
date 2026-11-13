@@ -192,6 +192,20 @@
               <span id="stage-rec-text">MERENDER MP4...</span>
             </div>
 
+            <!-- Tombol Aktifkan Suara Preview (Muncul jika AudioContext suspended oleh browser) -->
+            <button
+              id="btn-unlock-stage-audio"
+              type="button"
+              class="hidden absolute bottom-3 right-3 z-20 px-3.5 py-2 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold flex items-center gap-2 shadow-xl transition active:scale-95 cursor-pointer"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+              <span>Klik untuk Aktifkan Suara</span>
+            </button>
+
             <!-- Iframe Animasi HTML -->
             <div id="iframe-aspect-wrapper" class="stage-frame-16-9 relative overflow-hidden bg-[#0F172A] transition-all duration-300">
               <iframe
@@ -379,21 +393,34 @@
               id="select-capture-mode"
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-sm text-slate-100 focus:outline-none focus:border-[#06D6A0] cursor-pointer"
             >
-              <option value="auto" selected>Otomatis (SVG Vektor / Canvas / DOM)</option>
+              <option value="auto" selected>Virtual-Time Presisi 1.0x (SVG / Canvas / DOM)</option>
               <option value="display">Tangkap Layar Stage (getDisplayMedia)</option>
             </select>
           </div>
 
-          <!-- Toggle Sertakan Audio -->
-          <div class="studio-card rounded-xl p-3 flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-semibold text-slate-100">Sertakan Audio ke MP4</div>
-              <div class="text-xs text-slate-400">Rekam musik &amp; SFX Web Audio API dari animasi</div>
+          <!-- Toggle Tampilkan Subtitle & Sertakan Audio -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div class="studio-card rounded-xl p-3 flex items-center justify-between gap-2.5">
+              <div class="min-w-0">
+                <div class="text-xs sm:text-sm font-semibold text-slate-100 truncate">Subtitle Video</div>
+                <div class="text-[11px] text-slate-400 truncate">Teks narasi di layar</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input id="toggle-show-subtitle" type="checkbox" checked class="sr-only peer" />
+                <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#38BDF8]"></div>
+              </label>
             </div>
-            <label class="relative inline-flex items-center cursor-pointer shrink-0">
-              <input id="toggle-include-audio" type="checkbox" checked class="sr-only peer" />
-              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#06D6A0]"></div>
-            </label>
+
+            <div class="studio-card rounded-xl p-3 flex items-center justify-between gap-2.5">
+              <div class="min-w-0">
+                <div class="text-xs sm:text-sm font-semibold text-slate-100 truncate">Audio Stereo AAC</div>
+                <div class="text-[11px] text-slate-400 truncate">Musik &amp; SFX ke MP4</div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input id="toggle-include-audio" type="checkbox" checked class="sr-only peer" />
+                <div class="w-10 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#06D6A0]"></div>
+              </label>
+            </div>
           </div>
 
           <!-- Tombol Utama Mulai Render MP4 -->
@@ -449,7 +476,18 @@
             <!-- Detail Statistik Frame & Waktu -->
             <div class="grid grid-cols-2 gap-2 pt-1 font-mono-code text-[11px] text-slate-400">
               <div>Frame: <span id="render-frame-count" class="text-slate-200 font-semibold">0 / 1800</span></div>
-              <div class="text-right">Waktu: <span id="render-elapsed-time" class="text-slate-200 font-semibold">00:00 / 01:00</span></div>
+              <div class="text-right">Virtual Time: <span id="render-elapsed-time" class="text-slate-200 font-semibold">00:00 / 01:00</span></div>
+            </div>
+
+            <!-- Indikator Level Puncak Audio Stereo AAC -->
+            <div id="render-audio-meter-box" class="pt-2 border-t border-slate-800/80 space-y-1">
+              <div class="flex items-center justify-between text-[11px] font-mono-code">
+                <span class="text-slate-400">Audio Stereo 44.1kHz:</span>
+                <span id="render-audio-peak-text" class="text-teal-300 font-semibold">Menunggu render audio...</span>
+              </div>
+              <div class="w-full h-1.5 rounded-full bg-slate-900 overflow-hidden">
+                <div id="render-audio-peak-bar" class="h-full rounded-full bg-gradient-to-r from-[#06D6A0] via-[#FFD166] to-[#FF6B6B] w-0 transition-all duration-300"></div>
+              </div>
             </div>
           </div>
         </div>
@@ -610,7 +648,7 @@
 
       // =========================================================================
       // 1. ANIMASI DEFAULT 60 DETIK: "MENGAPA KITA SUKA MENUNDA PEKERJAAN?"
-      //    (4 Adegan Vektor SVG + Subtitle Tersinkronisasi + Web Audio API)
+      //    (4 Adegan Vektor SVG + Subtitle + Zero-Loop + Web Audio Musik & SFX)
       // =========================================================================
       const DEFAULT_ANIMATION_HTML = `<!DOCTYPE html>
 <html lang="id">
@@ -955,7 +993,7 @@
     <!-- ===================================================================== -->
     <!-- KOTAK SUBTITLE TERSINKRONISASI (Ikut Ter-render ke dalam Video MP4)  -->
     <!-- ===================================================================== -->
-    <g transform="translate(640, 652)">
+    <g id="subtitle-overlay" transform="translate(640, 652)">
       <rect x="-540" y="-38" width="1080" height="74" rx="18" fill="#0F172A" fill-opacity="0.88" stroke="#334155" stroke-width="1.5" />
       <text id="sub-line-1" x="0" y="-6" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="600" font-size="20" fill="#F8FAFC">
         Pernahkah kamu berniat mengerjakan tugas, tapi malah berakhir menggulir media sosial berjam-jam?
@@ -999,7 +1037,7 @@
       let lastStep = -1;
       let sfxDone = new Set();
 
-      // Web Audio Procedural Engine
+      // Web Audio Procedural Engine (Musik Latar + SFX Whoosh, Pop, Ding, Laser, Chime)
       let audioCtx = null;
       let masterGain = null;
       function ensureAudio() {
@@ -1008,7 +1046,7 @@
           if (!AC) return;
           audioCtx = new AC();
           masterGain = audioCtx.createGain();
-          masterGain.gain.value = isMuted ? 0 : 0.35;
+          masterGain.gain.value = isMuted ? 0 : 0.42;
           masterGain.connect(audioCtx.destination);
         }
         if (audioCtx && audioCtx.state === 'suspended') {
@@ -1032,15 +1070,32 @@
         osc.stop(now + dur + 0.02);
       }
 
+      function playSweep(startFreq, endFreq, dur = 0.35, type = 'sine', vol = 0.25) {
+        if (!audioCtx || audioCtx.state !== 'running') return;
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + dur);
+        g.gain.setValueAtTime(0.001, now);
+        g.gain.linearRampToValueAtTime(vol, now + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0008, now + dur);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + dur + 0.02);
+      }
+
       function stepAudio(t) {
         ensureAudio();
         if (!audioCtx || audioCtx.state !== 'running') return;
         if (masterGain) {
           const fade = t >= 57.5 ? Math.max(0, 1 - (t - 57.5) / 2.5) : 1;
-          masterGain.gain.setTargetAtTime((isMuted ? 0 : 0.35) * fade, audioCtx.currentTime, 0.05);
+          masterGain.gain.setValueAtTime((isMuted ? 0 : 0.42) * fade, audioCtx.currentTime);
         }
         const step = Math.floor(t * 4);
-        if (step !== lastStep) {
+        if (step !== lastStep && t < DURATION) {
           lastStep = step;
           const m1 = [523.25, 659.25, 783.99, 659.25, 880, 783.99, 659.25, 587.33];
           const m2 = [440, 523.25, 659.25, 698.46, 659.25, 523.25, 493.88, 415.3];
@@ -1051,18 +1106,49 @@
           else if (t >= 25 && t < 45) f = m3[step % 8];
           else if (t >= 45) f = m4[step % 8];
 
-          if (step % 2 === 0 || step % 8 === 3) playTone(f, 0.24, 'sine', 0.24);
-          if (step % 4 === 0) playTone(f * 0.25, 0.42, 'triangle', 0.28);
-          if (t >= 3.2 && t <= 9.8) playTone(step % 2 === 0 ? 1250 : 880, 0.04, 'sine', 0.14);
-          if (t >= 30 && t <= 44.8 && step % 4 === 0) playTone(1180, 0.05, 'sine', 0.18);
+          if (step % 2 === 0 || step % 8 === 3) playTone(f, 0.24, 'sine', 0.26);
+          if (step % 4 === 0) playTone(f * 0.25, 0.42, 'triangle', 0.3);
+          if (t >= 3.2 && t <= 9.8) playTone(step % 2 === 0 ? 1280 : 920, 0.04, 'sine', 0.16);
+          if (t >= 30 && t <= 44.8 && step % 4 === 0) playTone(1180, 0.05, 'sine', 0.2);
         }
-        if (!sfxDone.has('ding') && t >= 12.2 && t < 12.6) {
-          sfxDone.add('ding');
-          playTone(880, 0.35, 'sine', 0.3);
+
+        // SFX Khusus Momen Penting
+        if (!sfxDone.has('pop-phone') && t >= 3.0 && t < 3.4) {
+          sfxDone.add('pop-phone');
+          playSweep(320, 960, 0.18, 'sine', 0.34);
         }
-        if (!sfxDone.has('chime') && t >= 48.0 && t < 48.5) {
+        if (!sfxDone.has('whoosh-1') && t >= 9.3 && t < 9.7) {
+          sfxDone.add('whoosh-1');
+          playSweep(180, 680, 0.42, 'triangle', 0.32);
+        }
+        if (!sfxDone.has('ding-block') && t >= 11.8 && t < 12.2) {
+          sfxDone.add('ding-block');
+          playTone(220, 0.32, 'sawtooth', 0.25);
+          playTone(880, 0.35, 'sine', 0.28);
+        }
+        if (!sfxDone.has('bub-1') && t >= 15.5 && t < 15.9) {
+          sfxDone.add('bub-1');
+          playSweep(420, 880, 0.14, 'sine', 0.28);
+        }
+        if (!sfxDone.has('bub-2') && t >= 17.1 && t < 17.5) {
+          sfxDone.add('bub-2');
+          playSweep(480, 980, 0.14, 'sine', 0.28);
+        }
+        if (!sfxDone.has('bub-3') && t >= 18.7 && t < 19.1) {
+          sfxDone.add('bub-3');
+          playSweep(540, 1080, 0.14, 'sine', 0.28);
+        }
+        if (!sfxDone.has('laser-cut') && t >= 26.5 && t < 26.9) {
+          sfxDone.add('laser-cut');
+          playSweep(1400, 260, 0.32, 'sawtooth', 0.3);
+        }
+        if (!sfxDone.has('whoosh-2') && t >= 44.5 && t < 44.9) {
+          sfxDone.add('whoosh-2');
+          playSweep(240, 840, 0.42, 'triangle', 0.32);
+        }
+        if (!sfxDone.has('chime') && t >= 47.6 && t < 48.0) {
           sfxDone.add('chime');
-          [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => setTimeout(() => playTone(n, 0.8, 'triangle', 0.25), i * 70));
+          [523.25, 659.25, 783.99, 1046.5].forEach((n, i) => setTimeout(() => playTone(n, 0.75, 'triangle', 0.3), i * 70));
         }
       }
 
@@ -1080,7 +1166,8 @@
 
       const el = (id) => document.getElementById(id);
 
-      function render(t) {
+      function render(rawT) {
+        const t = Math.max(0, Math.min(DURATION, rawT));
         const sc = t >= 45 ? SCENES[3] : t >= 25 ? SCENES[2] : t >= 10 ? SCENES[1] : SCENES[0];
         el('svg-scene-dot').setAttribute('fill', sc.color);
         el('svg-scene-label').textContent = sc.badge;
@@ -1234,16 +1321,31 @@
         }
       }
 
+      // Hook Seek Deterministik untuk Mesin Render HTML2MP4 Studio
+      window.__studioSeek = function (targetSec) {
+        const clamped = Math.max(0, Math.min(DURATION, targetSec));
+        if (clamped < currentTime) {
+          sfxDone.clear();
+          lastStep = -1;
+        }
+        currentTime = clamped;
+        stepAudio(currentTime);
+        render(currentTime);
+      };
+
       function loop(ts) {
-        if (!lastTs) lastTs = ts;
-        const dt = (ts - lastTs) / 1000;
+        if (lastTs === null) lastTs = ts;
+        const dt = Math.max(0, (ts - lastTs) / 1000);
         lastTs = ts;
         if (isPlaying) {
           currentTime += Math.min(dt, 0.1);
+          // ZERO LOOPING: Berhenti rapi di akhir durasi (60.0 detik), tidak pernah mengulang ke 00:00
           if (currentTime >= DURATION) {
-            currentTime = 0;
-            sfxDone.clear();
-            lastStep = -1;
+            currentTime = DURATION;
+            isPlaying = false;
+            render(DURATION);
+            requestAnimationFrame(loop);
+            return;
           }
           stepAudio(currentTime);
           render(currentTime);
@@ -1255,19 +1357,38 @@
       window.addEventListener('message', (e) => {
         const msg = e.data || {};
         if (msg.type === 'STUDIO_CMD') {
-          if (msg.cmd === 'PLAY') { isPlaying = true; lastTs = performance.now(); ensureAudio(); }
-          else if (msg.cmd === 'PAUSE') { isPlaying = false; }
-          else if (msg.cmd === 'RESTART') {
-            currentTime = 0; sfxDone.clear(); lastStep = -1; isPlaying = true; lastTs = performance.now();
-            ensureAudio(); render(0);
-          }
-          else if (msg.cmd === 'SET_MUTE') {
+          if (msg.cmd === 'PLAY') {
+            if (currentTime >= DURATION) {
+              currentTime = 0;
+              sfxDone.clear();
+              lastStep = -1;
+            }
+            isPlaying = true;
+            lastTs = performance.now();
+            ensureAudio();
+          } else if (msg.cmd === 'PAUSE') {
+            isPlaying = false;
+          } else if (msg.cmd === 'RESTART') {
+            currentTime = 0;
+            sfxDone.clear();
+            lastStep = -1;
+            isPlaying = true;
+            lastTs = performance.now();
+            ensureAudio();
+            render(0);
+          } else if (msg.cmd === 'SET_MUTE') {
             isMuted = !!msg.muted;
-            if (masterGain && audioCtx) masterGain.gain.setTargetAtTime(isMuted ? 0 : 0.35, audioCtx.currentTime, 0.03);
+            ensureAudio();
+            if (masterGain && audioCtx) {
+              masterGain.gain.setValueAtTime(isMuted ? 0 : 0.42, audioCtx.currentTime);
+            }
+          } else if (msg.cmd === 'UNLOCK_AUDIO') {
+            ensureAudio();
           }
         }
       });
 
+      window.addEventListener('pointerdown', ensureAudio);
       render(0);
       requestAnimationFrame(loop);
     })();
@@ -1276,49 +1397,222 @@
 </html>`;
 
       // =========================================================================
-      // 2. INJEKSI CAPTURE BRIDGE KE DALAM IFRAME (AUDIO TAP + DOM/SVG/CANVAS)
+      // 2. INJEKSI DETERMINISTIC VIRTUAL-TIME & OFFLINE AUDIO SANDBOX KE IFRAME
       // =========================================================================
-      function buildInjectedHtml(rawHtml) {
+      function buildInjectedHtml(rawHtml, opts = {}) {
+        const offlineAudioMode = !!opts.offlineAudioMode;
+        const offlineDurationSec = Number(opts.offlineDurationSec) || 60;
+        const showSubtitle = opts.showSubtitle !== false;
+
         const bridgeScript = `
 <script>
 (function() {
-  // Penyadapan Web Audio API otomatis agar stream audio bisa direkam ke MP4
-  window.__studioAudioDest = null;
-  window.__studioMasterGain = null;
-  window.__studioMuted = false;
+  const OFFLINE_AUDIO_MODE = ${offlineAudioMode ? 'true' : 'false'};
+  const OFFLINE_DURATION_SEC = ${offlineDurationSec};
+  let showSub = ${showSubtitle ? 'true' : 'false'};
 
+  // 1. DETERMINISTIC VIRTUAL-TIME CONTROLLER (MENGATASI FAST-FORWARD & DRIFT)
+  const nativePerfNow = performance.now.bind(performance);
+  const nativeDateNow = Date.now.bind(Date);
+  const nativeRAF = window.requestAnimationFrame.bind(window);
+  const nativeCAF = window.cancelAnimationFrame.bind(window);
+  const nativeSetTimeout = window.setTimeout.bind(window);
+  const nativeClearTimeout = window.clearTimeout.bind(window);
+  const nativeSetInterval = window.setInterval.bind(window);
+  const nativeClearInterval = window.clearInterval.bind(window);
+
+  let virtualMode = false;
+  let virtualNowMs = 0;
+  const baseEpochMs = nativeDateNow();
+  let nextRafId = 1;
+  let rafQueue = new Map();
+  let nextTimerId = 1;
+  let virtualTimers = new Map();
+
+  window.__studioEnableVirtualTime = function(enable) {
+    virtualMode = !!enable;
+    if (virtualMode) {
+      virtualNowMs = 0;
+      rafQueue.clear();
+      virtualTimers.clear();
+    }
+  };
+
+  window.__studioStepToTime = function(targetMs) {
+    virtualMode = true;
+    const prevMs = virtualNowMs;
+    const stepTarget = Math.max(prevMs, targetMs);
+
+    // Jalankan timer virtual (setTimeout/setInterval) secara kronologis hingga targetMs
+    let safety = 0;
+    while (safety++ < 500) {
+      let earliestId = null;
+      let earliestTime = Infinity;
+      virtualTimers.forEach((entry, id) => {
+        if (entry.triggerAt <= stepTarget && entry.triggerAt < earliestTime) {
+          earliestTime = entry.triggerAt;
+          earliestId = id;
+        }
+      });
+      if (earliestId === null) break;
+      const entry = virtualTimers.get(earliestId);
+      virtualNowMs = entry.triggerAt;
+      window.__virtualAudioTimeSec = virtualNowMs / 1000;
+      if (entry.intervalMs > 0) {
+        entry.triggerAt += entry.intervalMs;
+      } else {
+        virtualTimers.delete(earliestId);
+      }
+      try { entry.cb(); } catch (err) {}
+    }
+
+    virtualNowMs = stepTarget;
+    window.__virtualAudioTimeSec = virtualNowMs / 1000;
+
+    // Sinkronkan CSS & Web Animations API ke waktu virtual presisi
+    if (typeof document.getAnimations === 'function') {
+      try {
+        document.getAnimations().forEach((anim) => {
+          anim.pause();
+          anim.currentTime = virtualNowMs;
+        });
+      } catch (e) {}
+    }
+
+    // Jika animasi memiliki hook seek langsung, panggil
+    if (typeof window.__studioSeek === 'function') {
+      try { window.__studioSeek(virtualNowMs / 1000); } catch (e) {}
+    }
+
+    // Jalankan antrean requestAnimationFrame sekali untuk frame ini
+    const batch = Array.from(rafQueue.values());
+    rafQueue.clear();
+    for (let i = 0; i < batch.length; i++) {
+      try { batch[i](virtualNowMs); } catch (err) {}
+    }
+  };
+
+  performance.now = function() {
+    return virtualMode ? virtualNowMs : nativePerfNow();
+  };
+
+  Date.now = function() {
+    return virtualMode ? Math.round(baseEpochMs + virtualNowMs) : nativeDateNow();
+  };
+
+  window.requestAnimationFrame = function(cb) {
+    if (!virtualMode) return nativeRAF(cb);
+    const id = nextRafId++;
+    rafQueue.set(id, cb);
+    return id;
+  };
+
+  window.cancelAnimationFrame = function(id) {
+    if (!virtualMode) return nativeCAF(id);
+    rafQueue.delete(id);
+  };
+
+  window.setTimeout = function(cb, delay = 0, ...args) {
+    if (!virtualMode) return nativeSetTimeout(cb, delay, ...args);
+    const id = nextTimerId++;
+    virtualTimers.set(id, {
+      cb: () => (typeof cb === 'function' ? cb(...args) : null),
+      triggerAt: virtualNowMs + Math.max(0, Number(delay) || 0),
+      intervalMs: 0
+    });
+    return id;
+  };
+
+  window.clearTimeout = function(id) {
+    if (!virtualMode) return nativeClearTimeout(id);
+    virtualTimers.delete(id);
+  };
+
+  window.setInterval = function(cb, delay = 16, ...args) {
+    if (!virtualMode) return nativeSetInterval(cb, delay, ...args);
+    const id = nextTimerId++;
+    const step = Math.max(4, Number(delay) || 16);
+    virtualTimers.set(id, {
+      cb: () => (typeof cb === 'function' ? cb(...args) : null),
+      triggerAt: virtualNowMs + step,
+      intervalMs: step
+    });
+    return id;
+  };
+
+  window.clearInterval = function(id) {
+    if (!virtualMode) return nativeClearInterval(id);
+    virtualTimers.delete(id);
+  };
+
+  // 2. OFFLINE AUDIO CONTEXT INTERCEPTOR (STEREO 44.1 kHz AAC RENDERING)
+  window.__virtualAudioTimeSec = 0;
+  window.__studioOfflineCtx = null;
+  const liveAudioContexts = new Set();
   const OrigAudioContext = window.AudioContext || window.webkitAudioContext;
-  if (OrigAudioContext) {
+  const OrigOfflineAudioContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+
+  if (OFFLINE_AUDIO_MODE && OrigOfflineAudioContext) {
+    const totalSamples = Math.max(44100, Math.ceil(OFFLINE_DURATION_SEC * 44100));
+    const offlineCtx = new OrigOfflineAudioContext(2, totalSamples, 44100);
+    Object.defineProperty(offlineCtx, 'currentTime', {
+      get: function() { return window.__virtualAudioTimeSec; }
+    });
+    Object.defineProperty(offlineCtx, 'state', {
+      get: function() { return 'running'; }
+    });
+    offlineCtx.resume = function() { return Promise.resolve(); };
+    offlineCtx.suspend = function() { return Promise.resolve(); };
+    offlineCtx.close = function() { return Promise.resolve(); };
+    window.__studioOfflineCtx = offlineCtx;
+
+    window.AudioContext = window.webkitAudioContext = function() {
+      return offlineCtx;
+    };
+  } else if (OrigAudioContext) {
     window.AudioContext = window.webkitAudioContext = function(...args) {
       const ctx = new OrigAudioContext(...args);
-      try {
-        const dest = ctx.createMediaStreamDestination();
-        const monitorGain = ctx.createGain();
-        monitorGain.gain.value = window.__studioMuted ? 0 : 1;
-        monitorGain.connect(ctx.destination);
-
-        const origConnect = AudioNode.prototype.connect;
-        AudioNode.prototype.connect = function(target, ...rest) {
-          if (target === ctx.destination) {
-            origConnect.call(this, monitorGain, ...rest);
-            return origConnect.call(this, dest, ...rest);
-          }
-          return origConnect.call(this, target, ...rest);
-        };
-
-        window.__studioAudioCtx = ctx;
-        window.__studioAudioDest = dest;
-        window.__studioMonitorGain = monitorGain;
-      } catch (err) {}
+      liveAudioContexts.add(ctx);
+      const notifyState = () => {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'STUDIO_AUDIO_STATE', state: ctx.state }, '*');
+        }
+      };
+      ctx.addEventListener('statechange', notifyState);
+      setTimeout(notifyState, 50);
       return ctx;
     };
   }
 
+  function resumeAllLiveAudio() {
+    liveAudioContexts.forEach((ctx) => {
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'STUDIO_AUDIO_STATE', state: ctx.state }, '*');
+      }
+    });
+  }
+
+  function applySubtitleVisibility(visible) {
+    showSub = !!visible;
+    const subEl = document.getElementById('subtitle-overlay') || document.querySelector('[data-subtitle]');
+    if (subEl) {
+      subEl.style.display = showSub ? '' : 'none';
+    }
+  }
+
+  window.addEventListener('pointerdown', resumeAllLiveAudio);
+  window.addEventListener('DOMContentLoaded', () => applySubtitleVisibility(showSub));
+
   window.addEventListener('message', function(ev) {
-    if (ev.data && ev.data.type === 'STUDIO_CMD' && ev.data.cmd === 'SET_MUTE') {
-      window.__studioMuted = !!ev.data.muted;
-      if (window.__studioMonitorGain && window.__studioAudioCtx) {
-        window.__studioMonitorGain.gain.setTargetAtTime(window.__studioMuted ? 0 : 1, window.__studioAudioCtx.currentTime, 0.02);
+    const msg = ev.data || {};
+    if (msg.type === 'STUDIO_CMD') {
+      if (msg.cmd === 'UNLOCK_AUDIO' || msg.cmd === 'PLAY' || msg.cmd === 'RESTART') {
+        resumeAllLiveAudio();
+      } else if (msg.cmd === 'SET_SUBTITLE') {
+        applySubtitleVisibility(msg.visible);
       }
     }
   });
@@ -1338,14 +1632,13 @@
       let isStagePlaying = true;
       let isStageMuted = false;
       let stageCurrentTime = 0;
-      let stageTotalDuration = 60;
 
       // State Render MP4
       let isRendering = false;
       let cancelRequested = false;
       let stopAndSaveRequested = false;
       let generatedMp4Url = null;
-      let generatedMp4Filename = 'animasi-html2mp4.mp4';
+      let generatedMp4Filename = 'mengapa-kita-suka-menunda-pekerjaan.mp4';
 
       // Elemen UI
       const encoderCapabilityBadge = document.getElementById('encoder-capability-badge');
@@ -1356,6 +1649,7 @@
       const stageAspectBadge = document.getElementById('stage-aspect-badge');
       const stageRecBadge = document.getElementById('stage-rec-badge');
       const stageRecText = document.getElementById('stage-rec-text');
+      const btnUnlockStageAudio = document.getElementById('btn-unlock-stage-audio');
       const iframeAspectWrapper = document.getElementById('iframe-aspect-wrapper');
       const previewIframe = document.getElementById('preview-iframe');
 
@@ -1386,6 +1680,7 @@
       const inputDuration = document.getElementById('input-duration');
       const durPresetBtns = document.querySelectorAll('.dur-preset-btn');
       const selectCaptureMode = document.getElementById('select-capture-mode');
+      const toggleShowSubtitle = document.getElementById('toggle-show-subtitle');
       const toggleIncludeAudio = document.getElementById('toggle-include-audio');
       const btnStartRender = document.getElementById('btn-start-render');
       const activeRenderActions = document.getElementById('active-render-actions');
@@ -1397,6 +1692,8 @@
       const renderProgressBar = document.getElementById('render-progress-bar');
       const renderFrameCount = document.getElementById('render-frame-count');
       const renderElapsedTime = document.getElementById('render-elapsed-time');
+      const renderAudioPeakText = document.getElementById('render-audio-peak-text');
+      const renderAudioPeakBar = document.getElementById('render-audio-peak-bar');
 
       // Editor HTML
       const editorDropzone = document.getElementById('editor-dropzone');
@@ -1471,7 +1768,10 @@
       function loadHtmlIntoStage(htmlStr, titleLabel = 'Animasi Kustom HTML') {
         currentHtmlCode = htmlStr;
         activeProjectTitle.textContent = titleLabel;
-        previewIframe.srcdoc = buildInjectedHtml(htmlStr);
+        previewIframe.srcdoc = buildInjectedHtml(htmlStr, {
+          offlineAudioMode: false,
+          showSubtitle: toggleShowSubtitle.checked
+        });
         isStagePlaying = true;
         stageIconPlay.classList.add('hidden');
         stageIconPause.classList.remove('hidden');
@@ -1480,7 +1780,6 @@
         stageTimecodeNow.textContent = '00:00';
       }
 
-      // Perbarui rasio aspek preview stage saat resolusi berubah
       function updateStageAspectRatio() {
         const res = selectResolution.value;
         if (res === '1080x1920') {
@@ -1495,7 +1794,6 @@
       }
       selectResolution.addEventListener('change', updateStageAspectRatio);
 
-      // Sinkronisasi Durasi Input & Preset
       durPresetBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
           const d = parseInt(btn.getAttribute('data-dur'), 10) || 60;
@@ -1515,12 +1813,21 @@
         stageTimecodeTotal.textContent = formatSeconds(val);
       });
 
-      // Kontrol Play/Pause, Restart, Mute pada Stage
       function sendIframeCmd(cmd, payload = {}) {
         if (previewIframe && previewIframe.contentWindow) {
           previewIframe.contentWindow.postMessage({ type: 'STUDIO_CMD', cmd, ...payload }, '*');
         }
       }
+
+      toggleShowSubtitle.addEventListener('change', () => {
+        sendIframeCmd('SET_SUBTITLE', { visible: toggleShowSubtitle.checked });
+      });
+
+      btnUnlockStageAudio.addEventListener('click', () => {
+        sendIframeCmd('UNLOCK_AUDIO');
+        btnUnlockStageAudio.classList.add('hidden');
+        showToast('Audio Live Preview diaktifkan!');
+      });
 
       btnStagePlay.addEventListener('click', () => {
         isStagePlaying = !isStagePlaying;
@@ -1548,6 +1855,7 @@
       btnStageMute.addEventListener('click', () => {
         isStageMuted = !isStageMuted;
         sendIframeCmd('SET_MUTE', { muted: isStageMuted });
+        if (!isStageMuted) sendIframeCmd('UNLOCK_AUDIO');
         if (isStageMuted) {
           stageSoundOn.classList.add('hidden');
           stageSoundOff.classList.remove('hidden');
@@ -1559,11 +1867,30 @@
         }
       });
 
-      // Terima pesan waktu dari animasi default di dalam iframe
+      // Terima pesan status waktu & status AudioContext dari iframe
       window.addEventListener('message', (e) => {
-        if (e.data && e.data.type === 'STUDIO_TIME_UPDATE') {
-          stageCurrentTime = e.data.time || 0;
+        const msg = e.data || {};
+        if (msg.type === 'STUDIO_TIME_UPDATE') {
+          stageCurrentTime = msg.time || 0;
           stageTimecodeNow.textContent = formatSeconds(stageCurrentTime);
+          if (typeof msg.isPlaying === 'boolean' && !isRendering) {
+            isStagePlaying = msg.isPlaying;
+            if (isStagePlaying) {
+              stageIconPlay.classList.add('hidden');
+              stageIconPause.classList.remove('hidden');
+              stageLabelPlay.textContent = 'Jeda';
+            } else {
+              stageIconPlay.classList.remove('hidden');
+              stageIconPause.classList.add('hidden');
+              stageLabelPlay.textContent = 'Putar';
+            }
+          }
+        } else if (msg.type === 'STUDIO_AUDIO_STATE') {
+          if (msg.state === 'suspended') {
+            btnUnlockStageAudio.classList.remove('hidden');
+          } else {
+            btnUnlockStageAudio.classList.add('hidden');
+          }
         }
       });
 
@@ -1622,7 +1949,6 @@
           showToast('Kode HTML masih kosong!', true);
           return;
         }
-        // Ekstrak <title> jika ada untuk nama file output
         const titleMatch = code.match(/<title[^>]*>([^<]+)<\/title>/i);
         const extractedTitle = titleMatch ? titleMatch[1].trim() : 'Animasi HTML Kustom';
         generatedMp4Filename =
@@ -1637,34 +1963,107 @@
       });
 
       // =========================================================================
-      // 6. RASTERISASI FRAME IFRAME KE OFFSCREEN CANVAS (ANTI-TAINTING)
+      // 6. OFFLINE AUDIO RENDERING ENGINE (STEREO 44.1 kHz AUDIOBUFFER)
+      // =========================================================================
+      async function renderOfflineAudioTrack(htmlCode, targetDuration, fps, showSubtitle) {
+        const audioIframe = document.createElement('iframe');
+        audioIframe.style.cssText = 'position:fixed;width:320px;height:180px;left:-9999px;top:-9999px;opacity:0;pointer-events:none;border:0;';
+        document.body.appendChild(audioIframe);
+
+        try {
+          const loadedPromise = new Promise((resolve) => {
+            audioIframe.onload = () => resolve();
+            setTimeout(resolve, 1200);
+          });
+
+          audioIframe.srcdoc = buildInjectedHtml(htmlCode, {
+            offlineAudioMode: true,
+            offlineDurationSec: targetDuration,
+            showSubtitle
+          });
+
+          await loadedPromise;
+          await new Promise((r) => setTimeout(r, 80));
+
+          const win = audioIframe.contentWindow;
+          const doc = audioIframe.contentDocument;
+          if (!win || !win.__studioOfflineCtx) {
+            return null;
+          }
+
+          // Pemicu interaksi sintetis agar script yang menunggu klik ikut menginisialisasi AudioContext
+          try {
+            win.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+            if (doc && doc.body) {
+              doc.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+              doc.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+            }
+          } catch (e) {}
+
+          if (typeof win.__studioEnableVirtualTime === 'function') {
+            win.__studioEnableVirtualTime(true);
+          }
+
+          // Jalankan langkah waktu virtual dari 0 hingga targetDuration untuk menjadwalkan seluruh musik & SFX
+          const totalSteps = Math.ceil(targetDuration * fps);
+          for (let i = 0; i < totalSteps; i++) {
+            const tMs = (i / fps) * 1000;
+            if (typeof win.__studioStepToTime === 'function') {
+              win.__studioStepToTime(tMs);
+            }
+            if (i % 120 === 0) {
+              await new Promise((r) => setTimeout(r, 0));
+            }
+          }
+
+          const offlineCtx = win.__studioOfflineCtx;
+          const audioBuffer = await offlineCtx.startRendering();
+
+          // Hitung Peak Level Stereo (dBFS) untuk indikator UI
+          let maxSample = 0;
+          for (let ch = 0; ch < audioBuffer.numberOfChannels; ch++) {
+            const data = audioBuffer.getChannelData(ch);
+            for (let s = 0; s < data.length; s += 8) {
+              const abs = Math.abs(data[s]);
+              if (abs > maxSample) maxSample = abs;
+            }
+          }
+
+          const peakDb = maxSample > 0.00001 ? 20 * Math.log10(maxSample) : -96;
+          const peakPercent = maxSample > 0.00001 ? Math.min(100, Math.max(6, Math.round(maxSample * 100))) : 0;
+
+          return { audioBuffer, peakDb, peakPercent, hasSound: maxSample > 0.0001 };
+        } finally {
+          if (audioIframe.parentNode) {
+            audioIframe.parentNode.removeChild(audioIframe);
+          }
+        }
+      }
+
+      // =========================================================================
+      // 7. RASTERISASI FRAME IFRAME KE OFFSCREEN CANVAS (ANTI-TAINTING)
       // =========================================================================
       async function rasterizeIframeToCanvas(iframeEl, targetCtx, targetW, targetH) {
         const doc = iframeEl.contentDocument;
         if (!doc) return;
 
-        // Bersihkan latar kanvas dengan warna gelap studio
         targetCtx.fillStyle = '#090E1A';
         targetCtx.fillRect(0, 0, targetW, targetH);
 
-        // Prioritas 1: Jika ada elemen <canvas> utama (Three.js, p5.js, Game 2D)
+        // Prioritas 1: Elemen <canvas> (Three.js, p5.js, Game 2D)
         const canvases = Array.from(doc.querySelectorAll('canvas'));
         const mainCanvas = canvases.find((c) => c.width > 50 && c.height > 50);
         if (mainCanvas) {
           const scale = Math.min(targetW / mainCanvas.width, targetH / mainCanvas.height);
           const drawW = mainCanvas.width * scale;
           const drawH = mainCanvas.height * scale;
-          const dx = (targetW - drawW) / 2;
-          const dy = (targetH - drawH) / 2;
           try {
-            targetCtx.drawImage(mainCanvas, dx, dy, drawW, drawH);
+            targetCtx.drawImage(mainCanvas, (targetW - drawW) / 2, (targetH - drawH) / 2, drawW, drawH);
             return;
-          } catch (err) {
-            // Lanjut ke SVG/DOM jika canvas WebGL tanpa preserveDrawingBuffer
-          }
+          } catch (err) {}
         }
 
-        // Prioritas 2: Jika ada elemen <svg> utama (Motion Graphic Vektor SVG)
+        // Prioritas 2: Elemen <svg> (Motion Graphic Vektor SVG)
         const svgs = Array.from(doc.querySelectorAll('svg'));
         const mainSvg = svgs.find((s) => {
           const rect = s.getBoundingClientRect();
@@ -1692,9 +2091,7 @@
               const scale = Math.min(targetW / srcW, targetH / srcH);
               const drawW = srcW * scale;
               const drawH = srcH * scale;
-              const dx = (targetW - drawW) / 2;
-              const dy = (targetH - drawH) / 2;
-              targetCtx.drawImage(img, dx, dy, drawW, drawH);
+              targetCtx.drawImage(img, (targetW - drawW) / 2, (targetH - drawH) / 2, drawW, drawH);
               resolve();
             };
             img.onerror = () => resolve();
@@ -1738,7 +2135,7 @@
       }
 
       // =========================================================================
-      // 7. MESIN UTAMA ENCODING MP4 (WEBCODECS + MP4-MUXER & FALLBACK)
+      // 8. MESIN UTAMA ENCODING MP4 (DETERMINISTIC VIRTUAL-TIME + AAC AUDIO)
       // =========================================================================
       async function checkWebCodecsSupport() {
         if (typeof VideoEncoder !== 'undefined' && typeof Mp4Muxer !== 'undefined') {
@@ -1751,7 +2148,7 @@
               framerate: 30
             });
             if (support && support.supported) {
-              encoderCapabilityBadge.textContent = 'WebCodecs H.264 Ready';
+              encoderCapabilityBadge.textContent = 'WebCodecs H.264 + AAC';
               return true;
             }
           } catch (e) {}
@@ -1772,7 +2169,7 @@
         const sizeMb = (blob.size / (1024 * 1024)).toFixed(2);
         metaFileSize.textContent = `${sizeMb} MB`;
         metaResFps.textContent = `${width}×${height} @ ${fps} FPS`;
-        metaDuration.textContent = `${durationSec.toFixed(1)} detik`;
+        metaDuration.textContent = `${durationSec.toFixed(1)} detik (1.0x)`;
         metaCodec.textContent = codecLabel;
 
         resultEmptyState.classList.add('hidden');
@@ -1780,7 +2177,7 @@
         resultReadyDot.classList.remove('hidden');
 
         switchTab('result');
-        showToast(`Render selesai! File MP4 (${sizeMb} MB) siap diunduh.`);
+        showToast(`Render selesai! File MP4 (${sizeMb} MB • ${durationSec.toFixed(1)}d) siap diunduh.`);
       }
 
       function setRenderingUiState(active) {
@@ -1805,17 +2202,41 @@
         const targetDuration = Math.max(5, Math.min(300, parseInt(inputDuration.value, 10) || 60));
         const captureMode = selectCaptureMode.value;
         const includeAudio = toggleIncludeAudio.checked;
-        const totalFrames = targetDuration * fps;
+        const showSubtitle = toggleShowSubtitle.checked;
+        const totalFrames = Math.round(targetDuration * fps);
 
         cancelRequested = false;
         stopAndSaveRequested = false;
         setRenderingUiState(true);
 
-        renderStatusText.textContent = 'Memulai ulang animasi dari 00:00...';
         renderPercentText.textContent = '0%';
         renderProgressBar.style.width = '0%';
         renderFrameCount.textContent = `0 / ${totalFrames}`;
         renderElapsedTime.textContent = `00:00 / ${formatSeconds(targetDuration)}`;
+        renderAudioPeakBar.style.width = '0%';
+        renderAudioPeakText.textContent = includeAudio ? 'Merender trek audio offline...' : 'Audio dinonaktifkan';
+
+        // TAHAP 1: Render Stereo Audio Buffer via OfflineAudioContext (Jika Audio Aktif)
+        let offlineAudioResult = null;
+        if (includeAudio) {
+          renderStatusText.textContent = 'Merender audio stereo 44.1 kHz (OfflineAudioContext)...';
+          stageRecText.textContent = 'RENDER AUDIO...';
+          offlineAudioResult = await renderOfflineAudioTrack(currentHtmlCode, targetDuration, fps, showSubtitle);
+
+          if (offlineAudioResult && offlineAudioResult.hasSound) {
+            renderAudioPeakBar.style.width = `${offlineAudioResult.peakPercent}%`;
+            renderAudioPeakText.textContent = `Peak: ${offlineAudioResult.peakDb.toFixed(1)} dB (${offlineAudioResult.peakPercent}%)`;
+          } else {
+            renderAudioPeakBar.style.width = '4%';
+            renderAudioPeakText.textContent = 'Hening (-96 dB • Trek stereo siap)';
+          }
+        }
+
+        if (cancelRequested) {
+          setRenderingUiState(false);
+          showToast('Proses render MP4 dibatalkan.', true);
+          return;
+        }
 
         // Offscreen Canvas target resolusi penuh
         const offscreenCanvas = document.createElement('canvas');
@@ -1823,7 +2244,7 @@
         offscreenCanvas.height = targetH;
         const offscreenCtx = offscreenCanvas.getContext('2d', { alpha: false });
 
-        // Siapkan sumber video jika Mode Tangkap Layar (getDisplayMedia) dipilih
+        // Siapkan sumber video jika Mode Tangkap Layar dipilih
         let displayStream = null;
         let displayVideoEl = null;
         if (captureMode === 'display') {
@@ -1831,7 +2252,7 @@
             renderStatusText.textContent = 'Meminta izin tangkap layar stage...';
             displayStream = await navigator.mediaDevices.getDisplayMedia({
               video: { frameRate: fps },
-              audio: includeAudio
+              audio: false
             });
             displayVideoEl = document.createElement('video');
             displayVideoEl.srcObject = displayStream;
@@ -1845,22 +2266,27 @@
           }
         }
 
-        // Restart animasi dari 00:00 agar frame awal selalu presisi
-        sendIframeCmd('RESTART');
-        isStagePlaying = true;
-        stageIconPlay.classList.add('hidden');
-        stageIconPause.classList.remove('hidden');
-        stageLabelPlay.textContent = 'Jeda';
+        // Muat ulang iframe stage dalam keadaan bersih dan aktifkan Deterministic Virtual-Time
+        const stageReloaded = new Promise((resolve) => {
+          previewIframe.onload = () => resolve();
+          setTimeout(resolve, 1000);
+        });
+        previewIframe.srcdoc = buildInjectedHtml(currentHtmlCode, {
+          offlineAudioMode: false,
+          showSubtitle
+        });
+        await stageReloaded;
+        await new Promise((r) => setTimeout(r, 80));
 
-        // Beri jeda 180ms agar frame 00:00 ter-render sempurna
-        await new Promise((r) => setTimeout(r, 180));
+        const stageWin = previewIframe.contentWindow;
+        if (captureMode === 'auto' && stageWin && typeof stageWin.__studioEnableVirtualTime === 'function') {
+          stageWin.__studioEnableVirtualTime(true);
+        }
 
-        // Cek dukungan WebCodecs + Mp4Muxer
         const canUseWebCodecs = await checkWebCodecsSupport();
 
         if (canUseWebCodecs) {
           try {
-            // Pilih profil H.264 yang didukung GPU/CPU pengguna
             const candidateCodecs = targetW >= 1920 || fps >= 60
               ? ['avc1.4D002A', 'avc1.640028', 'avc1.420028', 'avc1.42001f']
               : ['avc1.42001f', 'avc1.4D001F', 'avc1.4D002A'];
@@ -1880,42 +2306,22 @@
               }
             }
 
-            // Cek apakah Audio Track tersedia & AudioEncoder AAC didukung
-            let audioTrack = null;
-            let useAudioEncoder = false;
-            let audioSampleRate = 48000;
-            let audioChannels = 2;
-
-            if (includeAudio) {
-              if (displayStream && displayStream.getAudioTracks().length > 0) {
-                audioTrack = displayStream.getAudioTracks()[0];
-              } else if (
-                previewIframe.contentWindow &&
-                previewIframe.contentWindow.__studioAudioDest &&
-                previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks().length > 0
-              ) {
-                audioTrack = previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks()[0];
-                if (previewIframe.contentWindow.__studioAudioCtx) {
-                  audioSampleRate = previewIframe.contentWindow.__studioAudioCtx.sampleRate || 48000;
+            // Cek dukungan AudioEncoder AAC (mp4a.40.2)
+            let canEncodeAac = false;
+            if (includeAudio && offlineAudioResult && offlineAudioResult.audioBuffer && typeof AudioEncoder !== 'undefined') {
+              try {
+                const aSup = await AudioEncoder.isConfigSupported({
+                  codec: 'mp4a.40.2',
+                  sampleRate: 44100,
+                  numberOfChannels: 2,
+                  bitrate: 128_000
+                });
+                if (aSup && aSup.supported) {
+                  canEncodeAac = true;
                 }
-              }
-
-              if (audioTrack && typeof AudioEncoder !== 'undefined' && typeof MediaStreamTrackProcessor !== 'undefined') {
-                try {
-                  const aSup = await AudioEncoder.isConfigSupported({
-                    codec: 'mp4a.40.2',
-                    sampleRate: audioSampleRate,
-                    numberOfChannels: audioChannels,
-                    bitrate: 128_000
-                  });
-                  if (aSup && aSup.supported) {
-                    useAudioEncoder = true;
-                  }
-                } catch (e) {}
-              }
+              } catch (e) {}
             }
 
-            // Inisialisasi Mp4Muxer
             const muxer = new Mp4Muxer.Muxer({
               target: new Mp4Muxer.ArrayBufferTarget(),
               video: {
@@ -1923,11 +2329,11 @@
                 width: targetW,
                 height: targetH
               },
-              audio: useAudioEncoder
+              audio: canEncodeAac
                 ? {
                     codec: 'aac',
-                    numberOfChannels: audioChannels,
-                    sampleRate: audioSampleRate
+                    numberOfChannels: 2,
+                    sampleRate: 44100
                   }
                 : undefined,
               fastStart: 'in-memory'
@@ -1950,62 +2356,67 @@
               hardwareAcceleration: 'no-preference'
             });
 
-            // Jika AudioEncoder AAC aktif, baca AudioData dari MediaStreamTrackProcessor
-            let audioEncoder = null;
-            let audioReader = null;
-            let audioLoopActive = false;
-
-            if (useAudioEncoder && audioTrack) {
-              audioEncoder = new AudioEncoder({
+            // TAHAP 2: Encode seluruh Stereo AudioBuffer ke AAC via AudioEncoder
+            if (canEncodeAac && offlineAudioResult && offlineAudioResult.audioBuffer) {
+              renderStatusText.textContent = 'Mengodekan trek audio stereo AAC...';
+              const audioEncoder = new AudioEncoder({
                 output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-                error: () => {}
+                error: (err) => console.warn('AudioEncoder warning:', err)
               });
               audioEncoder.configure({
                 codec: 'mp4a.40.2',
-                sampleRate: audioSampleRate,
-                numberOfChannels: audioChannels,
+                sampleRate: 44100,
+                numberOfChannels: 2,
                 bitrate: 128_000
               });
 
-              const processor = new MediaStreamTrackProcessor({ track: audioTrack });
-              audioReader = processor.readable.getReader();
-              audioLoopActive = true;
-              let baseAudioTs = null;
+              const aBuf = offlineAudioResult.audioBuffer;
+              const leftCh = aBuf.getChannelData(0);
+              const rightCh = aBuf.numberOfChannels > 1 ? aBuf.getChannelData(1) : leftCh;
+              const totalAudioSamples = aBuf.length;
+              const chunkSize = 1024;
 
-              (async () => {
-                while (audioLoopActive) {
-                  const { value: audioData, done } = await audioReader.read();
-                  if (done || !audioData) break;
-                  if (baseAudioTs === null) baseAudioTs = audioData.timestamp;
-                  if (audioEncoder && audioEncoder.state === 'configured' && audioLoopActive) {
-                    try {
-                      audioEncoder.encode(audioData);
-                    } catch (e) {}
-                  }
-                  audioData.close();
-                }
-              })();
-            }
+              for (let offset = 0; offset < totalAudioSamples; offset += chunkSize) {
+                const count = Math.min(chunkSize, totalAudioSamples - offset);
+                const planarData = new Float32Array(count * 2);
+                planarData.set(leftCh.subarray(offset, offset + count), 0);
+                planarData.set(rightCh.subarray(offset, offset + count), count);
 
-            // Loop Penangkapan Frame Real-Time Presisi
-            const frameIntervalMs = 1000 / fps;
-            const frameDurationUs = Math.round(1_000_000 / fps);
-            const renderStartPerf = performance.now();
-            let frameIndex = 0;
-
-            renderStatusText.textContent = useAudioEncoder
-              ? 'Merender Video H.264 + Audio AAC...'
-              : 'Merender Video H.264 MP4...';
-
-            while (frameIndex < totalFrames && !cancelRequested && !stopAndSaveRequested && !encoderError) {
-              const targetFrameTimePerf = renderStartPerf + frameIndex * frameIntervalMs;
-              const waitMs = targetFrameTimePerf - performance.now();
-              if (waitMs > 1) {
-                await new Promise((r) => setTimeout(r, waitMs));
+                const audioData = new AudioData({
+                  format: 'f32-planar',
+                  sampleRate: 44100,
+                  numberOfFrames: count,
+                  numberOfChannels: 2,
+                  timestamp: Math.round((offset / 44100) * 1_000_000),
+                  data: planarData
+                });
+                audioEncoder.encode(audioData);
+                audioData.close();
               }
 
-              // Gambar frame ke Offscreen Canvas
+              await audioEncoder.flush();
+              audioEncoder.close();
+            }
+
+            // TAHAP 3: Deterministic Virtual-Time Frame Stepping (t = i / fps)
+            const frameDurationUs = Math.round(1_000_000 / fps);
+            const displayStartPerf = performance.now();
+            let frameIndex = 0;
+
+            renderStatusText.textContent = canEncodeAac
+              ? 'Merender Frame Video H.264 + Audio AAC (1.0x)...'
+              : 'Merender Frame Video H.264 MP4 (1.0x)...';
+
+            while (frameIndex < totalFrames && !cancelRequested && !stopAndSaveRequested && !encoderError) {
+              const virtualSec = frameIndex / fps;
+              const virtualMs = virtualSec * 1000;
+
               if (captureMode === 'display' && displayVideoEl) {
+                // Untuk getDisplayMedia real-time, tunggu interval frame
+                const targetWall = displayStartPerf + virtualMs;
+                const wait = targetWall - performance.now();
+                if (wait > 1) await new Promise((r) => setTimeout(r, wait));
+
                 offscreenCtx.fillStyle = '#090E1A';
                 offscreenCtx.fillRect(0, 0, targetW, targetH);
                 const vw = displayVideoEl.videoWidth || targetW;
@@ -2015,15 +2426,18 @@
                 const dh = vh * sc;
                 offscreenCtx.drawImage(displayVideoEl, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
               } else {
+                // Maju tepat ke waktu virtual t = i / fps tanpa drift & tanpa looping
+                if (stageWin && typeof stageWin.__studioStepToTime === 'function') {
+                  stageWin.__studioStepToTime(virtualMs);
+                }
                 await rasterizeIframeToCanvas(previewIframe, offscreenCtx, targetW, targetH);
               }
 
-              // Cegah antrean encoder meluap jika mesin lambat
               while (videoEncoder.encodeQueueSize > 8 && !cancelRequested) {
                 await new Promise((r) => setTimeout(r, 8));
               }
 
-              const timestampUs = frameIndex * frameDurationUs;
+              const timestampUs = Math.round((frameIndex / fps) * 1_000_000);
               const videoFrame = new VideoFrame(offscreenCanvas, {
                 timestamp: timestampUs,
                 duration: frameDurationUs
@@ -2034,32 +2448,26 @@
 
               frameIndex++;
 
-              // Perbarui UI Progres setiap 3 frame
               if (frameIndex % 3 === 0 || frameIndex === totalFrames) {
                 const pct = Math.min(100, Math.round((frameIndex / totalFrames) * 100));
-                const elapsedSec = frameIndex / fps;
+                const vSec = frameIndex / fps;
                 renderPercentText.textContent = `${pct}%`;
                 renderProgressBar.style.width = `${pct}%`;
                 renderFrameCount.textContent = `${frameIndex} / ${totalFrames}`;
-                renderElapsedTime.textContent = `${formatSeconds(elapsedSec)} / ${formatSeconds(targetDuration)}`;
+                renderElapsedTime.textContent = `${formatSeconds(vSec)} / ${formatSeconds(targetDuration)}`;
                 stageRecText.textContent = `MERENDER MP4 • ${pct}%`;
+                stageTimecodeNow.textContent = formatSeconds(vSec);
               }
             }
 
-            // Hentikan audio loop & bersihkan stream display jika ada
-            audioLoopActive = false;
-            if (audioReader) {
-              try { await audioReader.cancel(); } catch (e) {}
-            }
             if (displayStream) {
               displayStream.getTracks().forEach((t) => t.stop());
             }
 
             if (cancelRequested) {
               try { videoEncoder.close(); } catch (e) {}
-              if (audioEncoder) try { audioEncoder.close(); } catch (e) {}
               setRenderingUiState(false);
-              renderStatusText.textContent = 'Render dibatalkan.';
+              loadHtmlIntoStage(currentHtmlCode, activeProjectTitle.textContent);
               showToast('Proses render MP4 dibatalkan.', true);
               return;
             }
@@ -2068,17 +2476,14 @@
             await videoEncoder.flush();
             videoEncoder.close();
 
-            if (audioEncoder) {
-              await audioEncoder.flush();
-              audioEncoder.close();
-            }
-
             muxer.finalize();
             const actualDuration = frameIndex / fps;
-            const codecDesc = useAudioEncoder ? 'MP4 (H.264 + AAC)' : 'MP4 (H.264 AVC)';
+            const codecDesc = canEncodeAac ? 'MP4 (H.264 + Stereo AAC)' : 'MP4 (H.264 AVC)';
             setRenderingUiState(false);
             renderStatusText.textContent = 'Render MP4 selesai!';
 
+            // Kembalikan stage ke mode live preview normal
+            loadHtmlIntoStage(currentHtmlCode, activeProjectTitle.textContent);
             finalizeAndShowMp4Result(muxer.target.buffer, targetW, targetH, fps, actualDuration, codecDesc);
             return;
           } catch (err) {
@@ -2087,19 +2492,10 @@
         }
 
         // =====================================================================
-        // FALLBACK OTOMATIS: MEDIARECORDER (JIKA WEBCODECS TIDAK TERSEDIA)
+        // FALLBACK: MEDIARECORDER (JIKA WEBCODECS TIDAK TERSEDIA)
         // =====================================================================
         renderStatusText.textContent = 'Merender via MediaRecorder...';
         const stream = offscreenCanvas.captureStream(fps);
-        if (
-          includeAudio &&
-          previewIframe.contentWindow &&
-          previewIframe.contentWindow.__studioAudioDest
-        ) {
-          const aTracks = previewIframe.contentWindow.__studioAudioDest.stream.getAudioTracks();
-          if (aTracks.length > 0) stream.addTrack(aTracks[0]);
-        }
-
         const mimeCandidates = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
         const chosenMime = mimeCandidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
         const recorder = new MediaRecorder(stream, chosenMime ? { mimeType: chosenMime, videoBitsPerSecond: 6_000_000 } : undefined);
@@ -2113,14 +2509,13 @@
         });
 
         recorder.start(250);
-        const startPerf = performance.now();
         let fIdx = 0;
 
         while (fIdx < totalFrames && !cancelRequested && !stopAndSaveRequested) {
-          const targetPerf = startPerf + fIdx * (1000 / fps);
-          const wait = targetPerf - performance.now();
-          if (wait > 1) await new Promise((r) => setTimeout(r, wait));
-
+          const vMs = (fIdx / fps) * 1000;
+          if (stageWin && typeof stageWin.__studioStepToTime === 'function') {
+            stageWin.__studioStepToTime(vMs);
+          }
           await rasterizeIframeToCanvas(previewIframe, offscreenCtx, targetW, targetH);
           fIdx++;
 
@@ -2140,6 +2535,7 @@
 
         if (cancelRequested) {
           setRenderingUiState(false);
+          loadHtmlIntoStage(currentHtmlCode, activeProjectTitle.textContent);
           showToast('Proses render dibatalkan.', true);
           return;
         }
@@ -2147,6 +2543,7 @@
         const finalBlob = new Blob(chunks, { type: chosenMime || 'video/mp4' });
         const arrayBuf = await finalBlob.arrayBuffer();
         setRenderingUiState(false);
+        loadHtmlIntoStage(currentHtmlCode, activeProjectTitle.textContent);
         finalizeAndShowMp4Result(arrayBuf, targetW, targetH, fps, fIdx / fps, chosenMime || 'MP4 Video');
       }
 
@@ -2177,7 +2574,7 @@
       });
 
       // =========================================================================
-      // 8. INISIALISASI AWAL STUDIO
+      // 9. INISIALISASI AWAL STUDIO
       // =========================================================================
       htmlCodeTextarea.value = DEFAULT_ANIMATION_HTML;
       updateCharCount();
